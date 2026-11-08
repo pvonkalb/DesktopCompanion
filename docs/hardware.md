@@ -34,6 +34,18 @@ touch support assumes a shared bus, so it cannot be used. Touch will use the
 `XPT2046_Touchscreen` library on its own `SPIClass(VSPI)`. That's also why
 `USE_HSPI_PORT` is set: it moves the display onto HSPI and leaves VSPI free.
 
+**Verified 2026-11-07** (raw touch diagnostic, `XPT2046_Touchscreen` v1.4 on VSPI, library rotation 1):
+IRQ goes LOW on touch; press and release are detected correctly.
+
+| | Raw range seen at the panel edges | Direction vs. screen |
+|---|---|---|
+| X | 287 – 3678 | same (raw rises left → right) |
+| Y | 294 – 3796 | **inverted** (raw falls top → bottom) |
+
+Pressure (z) while touched: min 562, 10th percentile 1387, median 2110. Noise threshold is 300.
+The registry build of `XPT2046_Touchscreen` is an old snapshot without `begin(SPIClass&)`,
+so `platformio.ini` pins the GitHub `v1.4` tag.
+
 ### Other on-board peripherals
 | Peripheral | GPIO | Notes |
 |---|---|---|

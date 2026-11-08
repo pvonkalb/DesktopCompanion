@@ -18,9 +18,10 @@ constexpr uint16_t ACCENT     = rgb(0x00D1FF);  // cyan
 constexpr uint16_t ACCENT_ALT = rgb(0x3A7BFF);  // subtle blue
 constexpr uint16_t TEXT       = rgb(0xFFFFFF);
 constexpr uint16_t TEXT_MUTED = rgb(0x8A929C);
-constexpr uint16_t OK         = rgb(0x3DDC84);
-constexpr uint16_t WARN       = rgb(0xFFB020);
-constexpr uint16_t ERROR      = rgb(0xFF4D5E);
+// STATUS_ prefix avoids clashes with framework macros/enums (OK, ERROR, ...)
+constexpr uint16_t STATUS_OK    = rgb(0x3DDC84);
+constexpr uint16_t STATUS_WARN  = rgb(0xFFB020);
+constexpr uint16_t STATUS_ERROR = rgb(0xFF4D5E);
 
 constexpr int16_t PAD    = 8;    // standard spacing
 constexpr int16_t RADIUS = 6;    // card corner radius

@@ -1,9 +1,11 @@
-// Desktop Companion firmware - Milestone 1: display bring-up.
+// Desktop Companion firmware.
+// Current stage: Milestone 2a - raw touch diagnostic.
+// (display_test is kept for regression checks: swap it back in below.)
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
 #include "board_cyd.h"
-#include "display_test.h"
+#include "touch_test.h"
 
 namespace {
 TFT_eSPI tft;  // pins/driver come from build_flags in platformio.ini
@@ -15,18 +17,13 @@ void setup() {
 
     tft.init();
     tft.setRotation(board::DISPLAY_ROTATION);
-    display_test::begin(tft);
+    touch_test::begin(tft);
     board::setBacklight(true);   // reveal only after the first full frame is drawn
 
-    Serial.println();
-    Serial.println(F("[boot] Desktop Companion - display diagnostic"));
-    Serial.printf("[boot] rotation=%u size=%dx%d fill=%lums cpu=%luMHz heap=%lu\n",
-                  board::DISPLAY_ROTATION, tft.width(), tft.height(),
-                  static_cast<unsigned long>(display_test::fillTimeMs()),
-                  static_cast<unsigned long>(getCpuFrequencyMhz()),
-                  static_cast<unsigned long>(ESP.getFreeHeap()));
+    Serial.printf("[boot] Desktop Companion  size=%dx%d heap=%lu\n",
+                  tft.width(), tft.height(), static_cast<unsigned long>(ESP.getFreeHeap()));
 }
 
 void loop() {
-    display_test::update(tft, millis());
+    touch_test::update(tft, millis());
 }
