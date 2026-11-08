@@ -18,6 +18,11 @@ void drawChevronButton(TFT_eSPI& tft, const Rect& r, bool pointLeft, bool presse
 void drawHeaderTitle(TFT_eSPI& tft, const char* title, int16_t rightLimit = 314);   // title area only
 void drawHeader(TFT_eSPI& tft, const char* title, bool backPressed);                  // back + title
 
+// Segmented control (tabs). Segment i occupies segmentRect(r, n, i).
+void drawSegmented(TFT_eSPI& tft, const Rect& r, const char* const* labels, int n, int selected,
+                   int pressed = -1);
+Rect segmentRect(const Rect& r, int n, int i);
+
 class ButtonGroup {
 public:
     ButtonGroup(const Rect* rects, uint8_t count) : rects_(rects), count_(count) {}

@@ -1,5 +1,6 @@
 #include "demo_data.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -74,12 +75,50 @@ void load() {
     w.code = 2;         // partly cloudy
     w.isDay = true;
     w.rainChance = 40;
+
+    // Hourly: smooth daily temperature curve (low ~5 AM, peak ~3 PM), a rain band.
+    const time_t now = time(nullptr);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    const time_t thisHour = now - lt.tm_min * 60 - lt.tm_sec;
+    static const uint8_t CODES[model::HOURLY] = {2, 3, 61, 63, 61, 3, 2, 1, 0, 0, 0, 1};
+    static const uint8_t RAIN[model::HOURLY]  = {10, 30, 60, 70, 55, 30, 15, 5, 0, 0, 0, 5};
+    for (int i = 0; i < model::HOURLY; ++i) {
+        model::HourForecast& h = w.hourly[i];
+        h.time = thisHour + i * 3600;
+        struct tm ht;
+        localtime_r(&h.time, &ht);
+        h.tempC = 11.4f + 4.7f * cosf((ht.tm_hour - 15) * 2.0f * 3.14159265f / 24.0f);
+        h.code = CODES[i];
+        h.rainChance = RAIN[i];
+        h.isDay = ht.tm_hour >= 7 && ht.tm_hour < 18;
+    }
+    w.hourlyCount = model::HOURLY;
+
+    // Daily: a believable week.
+    struct DemoDay { uint8_t code, rain; float lo, hi; };
+    static const DemoDay DAYS[model::DAILY] = {
+        {2, 40, 6.7f, 16.1f}, {61, 80, 5.0f, 12.8f}, {0, 0, 3.9f, 17.2f}, {1, 10, 6.1f, 18.3f},
+        {3, 20, 8.3f, 15.6f}, {63, 90, 7.2f, 11.7f}, {2, 20, 5.0f, 14.4f},
+    };
+    for (int i = 0; i < model::DAILY; ++i) {
+        model::DayForecast& d = w.daily[i];
+        struct tm dt = lt;
+        dt.tm_mday += i;
+        dt.tm_hour = dt.tm_min = dt.tm_sec = 0;
+        dt.tm_isdst = -1;
+        d.date = mktime(&dt);
+        d.code = DAYS[i].code;
+        d.rainChance = DAYS[i].rain;
+        d.lowC = DAYS[i].lo;
+        d.highC = DAYS[i].hi;
+    }
+    w.dailyCount = model::DAILY;
     ++w.version;
 
     model::Calendar& c = st.calendar;
     c.source = model::Source::Demo;
     c.count = 0;
-    const time_t now = time(nullptr);
     // calendar 0 = yours (cyan), calendar 1 = shared from your wife (violet)
     add(c, "Coffee with Jordan", now - 3 * 3600, 60, false, 0);           // already over today
     add(c, "Dinner with Sam's parents", now + (2 * 60 + 15) * 60, 120, false, 0);

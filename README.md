@@ -20,6 +20,7 @@ DesktopCompanion/
   docs/
     architecture.md    system + firmware design
     hardware.md        pin map, display/touch config, troubleshooting
+    backlog.md         ideas parked for later
 ```
 
 A Windows companion app (Python) for PC-only features is optional and not started.
@@ -32,8 +33,9 @@ A Windows companion app (Python) for PC-only features is optional and not starte
 | 2. Touch input + calibration (NVS-stored, 5-point verified) | **Verified on hardware** 2026-11-07 (5–7 px centre error) |
 | 3a. Screen framework, fonts, Home screen (demo data) | **Verified on hardware** 2026-11-07 |
 | 3b. Calendar (week strip + agenda), Apps launcher, Settings, back navigation | **Verified on hardware** 2026-11-07 |
+| 3c. Weather screen: Hourly (12 h) + 7 Day tabs | **Verified on hardware** 2026-11-07 |
 | 4. WiFi setup, NTP time, Open-Meteo weather | Next |
-| 5. Countdown timer, focus timer | Planned |
+| 5. Timer + stopwatch, focus timer | Planned |
 
 ## Build and flash
 

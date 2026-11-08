@@ -21,7 +21,9 @@ int  dayDiff(time_t from, time_t to);           // calendar-day difference in lo
 time_t dayStart(time_t t, int addDays = 0);     // local midnight of t's day (+ addDays), DST-safe
 time_t weekStart(time_t t);                     // local midnight of the first day of t's week
 const char* weekdayShort(int wday);             // "SUN".."SAT"
-void monthYear(time_t t, char* out, size_t len);        // "November 2026"
+const char* weekdayTitle(int wday);             // "Sun".."Sat"
+void hourLabel(time_t t, char* out, size_t len);        // "3 PM" (12 h) or "15:00" (24 h)
+void monthYear(time_t t, char* out, size_t len);        // "November" (this year) or "Jan 2027"
 void dayHeading(time_t t, char* out, size_t len);       // "FRIDAY, NOV 7"
 
 }  // namespace timefmt

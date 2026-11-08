@@ -29,6 +29,28 @@ void drawHeaderTitle(TFT_eSPI& tft, const char* title, int16_t rightLimit) {
     });
 }
 
+Rect segmentRect(const Rect& r, int n, int i) {
+    const int16_t segW = (r.w - 4) / n;
+    return {static_cast<int16_t>(r.x + 2 + i * segW), static_cast<int16_t>(r.y + 2), segW,
+            static_cast<int16_t>(r.h - 4)};
+}
+
+void drawSegmented(TFT_eSPI& tft, const Rect& r, const char* const* labels, int n, int selected, int pressed) {
+    region(tft, r.x, r.y, r.w, r.h, BG, [&](TFT_eSPI& g, int16_t w, int16_t h) {
+        g.fillSmoothRoundRect(0, 0, w, h, 10, theme::CARD, BG);
+        setFont(g, Font::Body);
+        for (int i = 0; i < n; ++i) {
+            const Rect s = segmentRect(r, n, i);
+            const int16_t x = s.x - r.x, y = s.y - r.y;
+            uint16_t fill = theme::CARD, fg = TEXT_MUTED;
+            if (i == selected) { fill = ACCENT; fg = BG; }
+            else if (i == pressed) { fill = ACCENT_ALT; fg = TEXT; }
+            if (fill != theme::CARD) g.fillSmoothRoundRect(x, y, s.w, s.h, 8, fill, theme::CARD);
+            text(g, labels[i], x + s.w / 2, y + s.h / 2 + 1, MC_DATUM, fg, fill);
+        }
+    });
+}
+
 void drawHeader(TFT_eSPI& tft, const char* title, bool backPressed) {
     drawChevronButton(tft, HEADER_BACK, true, backPressed);
     drawHeaderTitle(tft, title);

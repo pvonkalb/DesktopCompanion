@@ -1,5 +1,5 @@
 // Desktop Companion firmware.
-// Current stage: Milestone 3b - calendar, launcher, settings (demo data).
+// Current stage: Milestone 3c - weather screen (demo data).
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
@@ -11,6 +11,7 @@
 #include "screens/launcher_screen.h"
 #include "screens/placeholder_screen.h"
 #include "screens/settings_screen.h"
+#include "screens/weather_screen.h"
 #include "touch_calibration.h"
 #include "touch_input.h"
 #include "ui/screen.h"
@@ -23,7 +24,7 @@ HomeScreen homeScreen;
 CalendarScreen calendarScreen;
 LauncherScreen launcherScreen;
 SettingsScreen settingsScreen;
-PlaceholderScreen weatherScreen("Weather", "Hourly forecast arrives with live weather (Milestone 4)");
+WeatherScreen weatherScreen;
 PlaceholderScreen focusScreen("Focus", "Focus timer is on the roadmap");
 PlaceholderScreen timerScreen("Timer", "Countdown timer is on the roadmap");
 PlaceholderScreen musicScreen("Music", "Needs the optional PC companion");
@@ -64,8 +65,9 @@ void setup() {
     ui::nav::add(ScreenId::PcStats, &pcScreen);
     ui::nav::add(ScreenId::Settings, &settingsScreen);
 
-    Serial.printf("[boot] Desktop Companion  heap=%lu  touch cal: %s%s\n",
+    Serial.printf("[boot] Desktop Companion  heap=%lu largest=%lu  touch cal: %s%s\n",
                   static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(ESP.getMaxAllocHeap()),
                   haveCal ? "stored" : "none (using defaults)", forceCal ? ", forced by touch" : "");
 
     ui::nav::begin(tft, !haveCal || forceCal ? ScreenId::Calibration : ScreenId::Home);

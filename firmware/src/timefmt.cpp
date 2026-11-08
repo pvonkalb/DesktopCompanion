@@ -86,12 +86,28 @@ const char* weekdayShort(int wday) {
     return SHORT[((wday % 7) + 7) % 7];
 }
 
+const char* weekdayTitle(int wday) {
+    static const char* const TITLE[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    return TITLE[((wday % 7) + 7) % 7];
+}
+
+void hourLabel(time_t t, char* out, size_t len) {
+    struct tm lt;
+    localtime_r(&t, &lt);
+    if (settings::USE_24H) { snprintf(out, len, "%02d:00", lt.tm_hour); return; }
+    const int h = lt.tm_hour % 12 == 0 ? 12 : lt.tm_hour % 12;
+    snprintf(out, len, "%d %s", h, lt.tm_hour < 12 ? "AM" : "PM");
+}
+
 void monthYear(time_t t, char* out, size_t len) {
     static const char* const LONG[] = {"January", "February", "March", "April", "May", "June", "July",
                                        "August", "September", "October", "November", "December"};
-    struct tm lt;
+    struct tm lt, nowTm;
     localtime_r(&t, &lt);
-    snprintf(out, len, "%s %d", LONG[lt.tm_mon], lt.tm_year + 1900);
+    const time_t now = time(nullptr);
+    localtime_r(&now, &nowTm);
+    if (lt.tm_year == nowTm.tm_year) snprintf(out, len, "%s", LONG[lt.tm_mon]);       // "November"
+    else snprintf(out, len, "%.3s %d", LONG[lt.tm_mon], lt.tm_year + 1900);           // "Jan 2027"
 }
 
 void dayHeading(time_t t, char* out, size_t len) {
