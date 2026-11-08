@@ -55,8 +55,11 @@ struct Calendar {
     Source   source = Source::None;
     uint8_t  count = 0;
     Event    events[MAX_EVENTS];  // sorted by start time
+    time_t   receivedAt = 0;      // wall-clock time the snapshot arrived (0 = unknown)
     uint32_t version = 0;
 };
+
+void sortCalendar(Calendar& c);   // by start time (stable, no allocation)
 
 struct State {
     Weather  weather;

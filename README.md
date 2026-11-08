@@ -23,7 +23,8 @@ DesktopCompanion/
     backlog.md         ideas parked for later
 ```
 
-A Windows companion app (Python) for PC-only features is optional and not started.
+`windows-companion/` (Python) syncs Google Calendar to the device over USB; see its README.
+Protocol: docs/protocol.md.
 
 ## Status
 
@@ -35,8 +36,9 @@ A Windows companion app (Python) for PC-only features is optional and not starte
 | 3b. Calendar (week strip + agenda), Apps launcher, Settings, back navigation | **Verified on hardware** 2026-11-07 |
 | 3c. Weather screen: Hourly (12 h) + 7 Day tabs | **Verified on hardware** 2026-11-07 |
 | 4. WiFi + location setup from a phone, NTP time, live Open-Meteo weather | **Verified on hardware** 2026-11-07 |
-| 4b. Google Calendar (access method to decide) | Next |
-| 5. Timer + stopwatch, focus timer | Planned |
+| 5. Google Calendar via the Windows companion (USB protocol v1) | **Verified on hardware** 2026-11-07 |
+| 6. Companion runs in the background + starts with Windows | Next |
+| 7. Timer + stopwatch, focus timer | Planned |
 
 ## Build and flash
 

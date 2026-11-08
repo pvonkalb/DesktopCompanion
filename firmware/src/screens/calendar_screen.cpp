@@ -162,7 +162,7 @@ void CalendarScreen::drawAgenda(TFT_eSPI& tft) {
 
         if (total == 0) {
             ui::setFont(g, Font::Body);
-            ui::text(g, cal.source == model::Source::None ? "Calendar not connected" : "Nothing planned",
+            ui::text(g, cal.source == model::Source::None ? "Start the PC companion" : "Nothing planned",
                      w / 2, 76, MC_DATUM, TEXT_MUTED, theme::CARD);
             return;
         }

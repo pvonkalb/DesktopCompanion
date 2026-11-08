@@ -1,11 +1,12 @@
 // Desktop Companion firmware.
-// Current stage: Milestone 4 - WiFi setup portal, NTP time, live Open-Meteo weather.
+// Current stage: Milestone 5 - calendar from the Windows companion over USB.
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
 #include "board_cyd.h"
 #include "demo_data.h"
 #include "net/network.h"
+#include "pc_link.h"
 #include "screens/calendar_screen.h"
 #include "screens/dev_screens.h"
 #include "screens/home_screen.h"
@@ -15,6 +16,8 @@
 #include "screens/setup_screen.h"
 #include "screens/weather_screen.h"
 #include "touch_calibration.h"
+#include "model.h"
+#include "settings.h"
 #include "timefmt.h"
 #include "touch_input.h"
 #include "ui/screen.h"
@@ -42,6 +45,7 @@ bool setupShownForPortal = false;
 }  // namespace
 
 void setup() {
+    Serial.setRxBufferSize(8192);   // calendar snapshots arrive in bursts while the UI draws
     Serial.begin(115200);
     board::initPins();
 
@@ -55,9 +59,10 @@ void setup() {
     if (haveCal) touch_input::setCalibration(cal);
     const bool forceCal = touch_input::irqActive();   // finger on the screen at boot = recalibrate
 
-    // Time + weather now come from the network; the calendar stays demo until its
-    // source is chosen (loaded once the clock is valid, see loop()).
+    // Time + weather come from WiFi; the calendar comes from the Windows companion
+    // over USB (last snapshot restored from flash until the PC sends a fresh one).
     net::begin();
+    pc_link::begin();
 
     using ui::ScreenId;
     ui::nav::add(ScreenId::Home, &homeScreen);
@@ -85,8 +90,10 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
     net::loop(now);
+    pc_link::loop(now);
 
-    if (!demoCalendarLoaded && timefmt::valid()) {   // demo events are relative to "now"
+    if (settings::DEMO_CALENDAR && !demoCalendarLoaded && timefmt::valid() &&
+        model::state().calendar.source == model::Source::None) {   // UI testing without a PC
         demo_data::loadCalendar();
         demoCalendarLoaded = true;
     }

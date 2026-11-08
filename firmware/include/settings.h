@@ -20,6 +20,10 @@ constexpr const char* NTP_SERVER_1      = "pool.ntp.org";
 constexpr const char* NTP_SERVER_2      = "time.google.com";
 constexpr const char* HOSTNAME          = "desk-companion";
 
+// Calendar
+constexpr bool     DEMO_CALENDAR        = false;  // sample events when no PC calendar exists (UI testing)
+constexpr uint32_t CALENDAR_STALE_S     = 3UL * 60 * 60;  // flag a PC calendar older than this on Home
+
 // Diagnostics
 constexpr bool     TOUCH_LOG       = true;    // log touch events + screen changes to serial
 constexpr bool     WIFIMANAGER_LOG = false;   // verbose setup-portal logging (diagnosing phone drop-outs)

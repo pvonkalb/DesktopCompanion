@@ -6,6 +6,8 @@
 
 #include "model.h"
 #include "net/network.h"
+#include "pc_link.h"
+#include "settings.h"
 #include "timefmt.h"
 #include "ui/icons.h"
 #include "ui/ui.h"
@@ -77,7 +79,16 @@ void HomeScreen::drawClock(TFT_eSPI& tft) {
 bool HomeScreen::refreshStatus() {
     char s[sizeof(status_)] = "";
     uint16_t colour = TEXT_MUTED;
-    if (!net::statusLine(s, sizeof(s), colour)) s[0] = '\0';
+    if (!net::statusLine(s, sizeof(s), colour)) {
+        s[0] = '\0';
+        const model::Calendar& cal = model::state().calendar;   // PC off and calendar getting old
+        const time_t now = time(nullptr);
+        if (cal.source == model::Source::Live && !pc_link::connected() && cal.receivedAt > 0 && timefmt::valid() &&
+            now - cal.receivedAt > static_cast<time_t>(settings::CALENDAR_STALE_S)) {
+            snprintf(s, sizeof(s), "Calendar from %ldh ago", static_cast<long>((now - cal.receivedAt) / 3600));
+            colour = TEXT_MUTED;
+        }
+    }
     if (strcmp(s, status_) == 0 && colour == statusColour_) return false;
     snprintf(status_, sizeof(status_), "%s", s);
     statusColour_ = colour;
@@ -141,7 +152,7 @@ void HomeScreen::drawEvents(TFT_eSPI& tft) {
 
         if (n == 0) {
             ui::setFont(g, Font::Body);
-            ui::text(g, cal.source == model::Source::None ? "Calendar not connected" : "Nothing coming up",
+            ui::text(g, cal.source == model::Source::None ? "Start the PC companion" : "Nothing coming up",
                      w / 2, 70, MC_DATUM, TEXT_MUTED, theme::CARD);
             return;
         }

@@ -34,15 +34,6 @@ void add(model::Calendar& c, const char* title, time_t start, int durationMin, b
     e.calendar = cal;
 }
 
-void sortByStart(model::Calendar& c) {   // insertion sort: tiny n, no allocation
-    for (int i = 1; i < c.count; ++i) {
-        const model::Event e = c.events[i];
-        int j = i - 1;
-        while (j >= 0 && c.events[j].start > e.start) { c.events[j + 1] = c.events[j]; --j; }
-        c.events[j + 1] = e;
-    }
-}
-
 }  // namespace
 
 void setClockFromBuildTime() {
@@ -136,7 +127,7 @@ void loadCalendar() {
     add(c, "Meal prep", at(6, 18, 0), 60, false, 1);
     add(c, "Movie night", at(6, 20, 0), 120, false, 0);
     add(c, "Weekend trip to the coast", at(9, 0, 0), 3 * 24 * 60, true, 1);   // multi-day
-    sortByStart(c);
+    model::sortCalendar(c);
     ++c.version;
 }
 

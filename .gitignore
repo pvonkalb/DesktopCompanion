@@ -7,3 +7,8 @@ __pycache__/
 *.token.json
 credentials*.json
 .env
+# Windows companion private files (normally kept in %LOCALAPPDATA%\DeskCompanion)
+windows-companion/credentials.json
+windows-companion/client_secret*.json
+windows-companion/token.json
+windows-companion/config.json
