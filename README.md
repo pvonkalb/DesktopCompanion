@@ -139,3 +139,8 @@ If colours look inverted, use `-e cyd2usb` instead (see docs/hardware.md).
 
 The Windows companion has its own setup (including the one-time Google OAuth client):
 [windows-companion/README.md](windows-companion/README.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE). The bundled Inter font is under the SIL Open Font License 1.1
+([assets/fonts/inter/OFL.txt](assets/fonts/inter/OFL.txt)).
