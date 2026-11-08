@@ -2,3 +2,5 @@ pyserial==3.5
 google-api-python-client>=2.150,<3
 google-auth-oauthlib>=1.2,<2
 google-auth-httplib2>=0.2,<1
+pystray==0.19.5
+Pillow>=11,<13

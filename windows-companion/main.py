@@ -16,6 +16,8 @@ import logging.handlers
 import sys
 import threading
 import time
+from dataclasses import dataclass
+from datetime import datetime
 
 import paths
 from serial_manager import SerialLink
@@ -41,25 +43,38 @@ def load_config() -> dict:
     return cfg
 
 
-def setup_logging(verbose: bool) -> None:
+def setup_logging(verbose: bool, console: bool = True) -> None:
     fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(name)-8s %(message)s", "%H:%M:%S")
-    console = logging.StreamHandler(sys.stdout)
-    console.setFormatter(fmt)
-    console.setLevel(logging.DEBUG if verbose else logging.INFO)
     logfile = logging.handlers.RotatingFileHandler(paths.data_dir() / "companion.log", maxBytes=1_000_000,
                                                    backupCount=2, encoding="utf-8")
     logfile.setFormatter(fmt)
     logfile.setLevel(logging.DEBUG)   # includes the device's own debug log lines
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
-    root.addHandler(console)
     root.addHandler(logfile)
+    if console and sys.stdout is not None:   # pythonw has no console
+        stream = logging.StreamHandler(sys.stdout)
+        stream.setFormatter(fmt)
+        stream.setLevel(logging.DEBUG if verbose else logging.INFO)
+        root.addHandler(stream)
     # Third-party HTTP/OAuth libraries log request bodies and token responses at DEBUG,
     # which includes access/refresh tokens and the client secret. Never let that reach
     # the log file: cap them at WARNING (and they log nothing secret at that level).
     for noisy in ("googleapiclient", "google", "google_auth_oauthlib", "requests_oauthlib", "oauthlib",
                   "requests", "urllib3", "httplib2"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+
+
+@dataclass
+class Status:
+    """What the tray shows. Written by the companion thread, read by the UI."""
+    device_connected: bool = False
+    device_fw: str = ""
+    last_sync: datetime | None = None
+    events: int = 0
+    error: str = ""
+    signin_needed: bool = False
+    paused: bool = False
 
 
 class Companion:
@@ -72,6 +87,34 @@ class Companion:
         self._acks_lock = threading.Lock()
         self._device_hello = threading.Event()
         self._next_sync = 0.0
+        self._stop = threading.Event()
+        self._paused = threading.Event()
+        self.status = Status()
+
+    # ---- control (any thread)
+    def sync_now(self) -> None:
+        self._next_sync = 0
+
+    def pause(self) -> None:
+        """Release the COM port (e.g. to flash firmware)."""
+        self._paused.set()
+        self.status.paused = True
+
+    def resume(self) -> None:
+        self._paused.clear()
+        self.status.paused = False
+        self._next_sync = 0
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def sign_in_again(self) -> None:
+        """Forget the saved Google sign-in; the next sync opens the browser."""
+        token = paths.data_dir() / "token.json"
+        token.unlink(missing_ok=True)
+        if hasattr(self._source, "reset_auth"):
+            self._source.reset_auth()
+        self._next_sync = 0
 
     # ---- incoming (reader thread)
     def _on_message(self, msg: dict) -> None:
@@ -79,6 +122,8 @@ class Companion:
         if kind == "hello":
             log.info("device: %s firmware %s (protocol v%s)", msg.get("dev"), msg.get("fw"), msg.get("v"))
             self._device_hello.set()
+            self.status.device_connected = True
+            self.status.device_fw = str(msg.get("fw", ""))
             self._next_sync = 0   # (re)booted device: send the calendar straight away
         elif kind in ("ack", "nak"):
             with self._acks_lock:
@@ -114,25 +159,41 @@ class Companion:
             payload = self._source.snapshot()
         except Exception as e:   # network down, token revoked, etc. - keep the link alive
             if type(e).__name__ == "SignInRequired":
-                log.error("%s. Retrying in 15 minutes - or restart the companion to try again now.", e)
+                log.error("%s. Retrying in 15 minutes - or use 'Sign in to Google' to try now.", e)
+                self.status.signin_needed = True
+                self.status.error = "Google sign-in needed"
                 self._next_sync = time.monotonic() + 15 * 60   # don't reopen a browser tab every minute
                 return
             log.error("calendar fetch failed: %s", e)
+            self.status.error = "Calendar fetch failed"
             self._next_sync = time.monotonic() + 60
             return
+        self.status.signin_needed = False
         if self._request({"t": "cal", **payload}):
             log.info("calendar sent: %d events", len(payload["ev"]))
+            self.status.last_sync = datetime.now()
+            self.status.events = len(payload["ev"])
+            self.status.error = ""
             self._next_sync = time.monotonic() + self._sync_every
         else:
+            self.status.error = "Device didn't confirm the calendar"
             self._next_sync = time.monotonic() + 15
 
     def run(self) -> None:
         last_ping = 0.0
-        while True:
+        while not self._stop.is_set():
+            if self._paused.is_set():
+                if self._link.is_open:
+                    self._link.close()
+                    log.info("paused - COM port released")
+                self.status.device_connected = False
+                self._stop.wait(0.5)
+                continue
             if not self._link.is_open:
                 self._device_hello.clear()
+                self.status.device_connected = False
                 if not self._link.open():
-                    time.sleep(RECONNECT_EVERY_S)
+                    self._stop.wait(RECONNECT_EVERY_S)
                     continue
                 self._link.send({"t": "hello", "v": 1, "app": "windows-companion", "ver": APP_VERSION})
                 self._next_sync = 0
@@ -144,7 +205,10 @@ class Companion:
                     continue
             if now >= self._next_sync:
                 self._sync_calendar()
-            time.sleep(0.25)
+            self.status.device_connected = (self._link.is_open and self._device_hello.is_set()
+                                            and time.monotonic() - self._link.last_rx < 15)
+            self._stop.wait(0.25)
+        self._link.close()
 
 
 def main() -> int:

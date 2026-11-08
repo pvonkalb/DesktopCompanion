@@ -83,6 +83,9 @@ class GoogleCalendarSource:
         self._days = days
         self._service = None
 
+    def reset_auth(self) -> None:
+        self._service = None
+
     def _api(self):
         if self._service is None:
             self._service = build("calendar", "v3", credentials=_credentials(), cache_discovery=False)

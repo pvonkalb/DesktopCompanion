@@ -43,6 +43,33 @@ every app to have its own "OAuth client", which you create for free in your acco
 7 days. To avoid that, go to **Audience → Publish app**. Your app stays private; only you
 can use it, and the "unverified" notice stays.
 
+## Run in the background (normal use)
+
+```
+.venv\Scripts\python tray.py --install-startup     # start with Windows (per user, no admin)
+.venv\Scripts\pythonw tray.py                       # start now, no console window
+```
+
+A charcoal icon with a status ring appears in the system tray (check the ^ overflow area):
+**cyan** = synced, **amber** = needs attention (e.g. Google sign-in), **grey** = device
+not connected or paused. Right-click the icon for:
+
+| Menu item | What it does |
+|---|---|
+| Sync now | Fetch and send the calendar immediately |
+| Pause (free COM port) | Releases COM3, e.g. before flashing firmware |
+| Sign in to Google again | Forgets the saved sign-in; the next sync opens the browser |
+| Open log | `%LOCALAPPDATA%\DeskCompanion\companion.log` |
+| Start with Windows | Toggles the per-user startup entry (also in Task Manager > Startup apps) |
+| Quit | Stops the companion |
+
+It runs at below-normal CPU priority, only one copy can run at a time, and it uses
+no kernel drivers (safe alongside anti-cheat software).
+`python tray.py --remove-startup` removes the startup entry.
+
+**Google "Testing" mode:** until the OAuth app is published (see docs/backlog.md), Google
+expires the sign-in after 7 days. The icon turns amber; choose **Sign in to Google again**.
+
 ## Which calendars
 
 By default the companion sends every calendar that's **ticked in Google Calendar**
