@@ -65,6 +65,47 @@ def setup_logging(verbose: bool, console: bool = True) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
+def chime_file() -> "Path":
+    """Our own two-note chime (generated once into the data dir), so the alert doesn't
+    depend on the user's Windows sound scheme - the "System Notification" sound is often
+    quiet or set to none."""
+    import math
+    import struct
+    import wave
+
+    path = paths.data_dir() / "chime.wav"
+    if path.exists():
+        return path
+    rate, frames = 44100, bytearray()
+    notes = [(880.0, 0.0), (1318.5, 0.16), (880.0, 0.75), (1318.5, 0.91)]   # A5-E6, twice
+    length = 1.6
+    for i in range(int(rate * length)):
+        t = i / rate
+        sample = 0.0
+        for freq, start in notes:
+            if t >= start:
+                dt = t - start
+                env = math.exp(-dt * 6.0) * min(1.0, dt * 200)   # quick attack, soft decay
+                sample += env * (math.sin(2 * math.pi * freq * dt) + 0.2 * math.sin(4 * math.pi * freq * dt))
+        frames += struct.pack("<h", int(max(-1.0, min(1.0, sample * 0.32)) * 32767))
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(bytes(frames))
+    return path
+
+
+def play_alert_sound() -> None:
+    """The device has no speaker, so timer alerts chime on the PC (async, non-blocking)."""
+    try:
+        import winsound
+        winsound.PlaySound(str(chime_file()), winsound.SND_FILENAME | winsound.SND_ASYNC)
+        log.info("alert chime played")
+    except Exception as e:   # no audio device etc.
+        log.warning("alert sound unavailable: %s", e)
+
+
 @dataclass
 class Status:
     """What the tray shows. Written by the companion thread, read by the UI."""
@@ -90,6 +131,8 @@ class Companion:
         self._stop = threading.Event()
         self._paused = threading.Event()
         self.status = Status()
+        self.alert_sound = bool(config.get("alert_sound", True))
+        self.on_alert = None   # set by the tray: (title, text) -> show a Windows notification
 
     # ---- control (any thread)
     def sync_now(self) -> None:
@@ -125,6 +168,16 @@ class Companion:
             self.status.device_connected = True
             self.status.device_fw = str(msg.get("fw", ""))
             self._next_sync = 0   # (re)booted device: send the calendar straight away
+        elif kind == "alert":
+            title, text = str(msg.get("ti", "Desk Companion")), str(msg.get("tx", ""))
+            log.info("device alert (%s): %s - %s", msg.get("k"), title, text)
+            if self.alert_sound:
+                play_alert_sound()
+            if self.on_alert:
+                try:
+                    self.on_alert(title, text)
+                except Exception:
+                    log.exception("alert notification failed")
         elif kind in ("ack", "nak"):
             with self._acks_lock:
                 waiter = self._acks.get(msg.get("s"))

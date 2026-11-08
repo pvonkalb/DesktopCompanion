@@ -48,6 +48,16 @@ void fitText(TFT_eSPI& g, const char* text, int16_t maxWidth, char* out, size_t 
 // Draw with an explicit datum and colours in one call (font must already be set).
 void text(TFT_eSPI& g, const char* s, int16_t x, int16_t y, uint8_t datum, uint16_t fg, uint16_t bg);
 
+// Running numbers: every digit gets the same cell width (like tabular figures),
+// so a ticking timer doesn't jiggle. Centred horizontally on cx, baseline at y.
+int16_t monoWidth(TFT_eSPI& g, const char* s);
+void monoText(TFT_eSPI& g, const char* s, int16_t cx, int16_t baseline, uint16_t fg, uint16_t bg);
+
+// "4:05" / "12:30" / "1:02:03" from milliseconds (rounded up, for countdowns).
+void formatCountdown(uint32_t ms, char* out, size_t len);
+// "4:05.3" / "1:02:03.4" (rounded down, for the stopwatch).
+void formatStopwatch(uint32_t ms, char* out, size_t len);
+
 // ---------- misc ----------
 uint16_t calendarColour(uint8_t calendarIndex);
 int roundTemp(float celsius);   // converted to the configured unit and rounded

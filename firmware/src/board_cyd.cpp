@@ -19,4 +19,10 @@ void setBacklight(bool on) {
     digitalWrite(PIN_BACKLIGHT, on ? HIGH : LOW);
 }
 
+void setLed(bool r, bool g, bool b) {
+    digitalWrite(PIN_LED_R, r ? LOW : HIGH);
+    digitalWrite(PIN_LED_G, g ? LOW : HIGH);
+    digitalWrite(PIN_LED_B, b ? LOW : HIGH);
+}
+
 }  // namespace board

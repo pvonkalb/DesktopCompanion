@@ -24,7 +24,7 @@ from PIL import Image, ImageDraw
 import pystray
 
 import paths
-from main import APP_VERSION, Companion, load_config, setup_logging
+from main import APP_VERSION, Companion, load_config, play_alert_sound, setup_logging
 
 log = logging.getLogger("tray")
 
@@ -127,6 +127,15 @@ class TrayApp:
         self.companion = companion
         self.icon = pystray.Icon(RUN_VALUE, ICONS["off"], APP_NAME, menu=self._menu())
         self._last_state = None
+        companion.on_alert = self._notify   # timer / focus alerts from the device
+
+    def _test_alert(self) -> None:
+        play_alert_sound()
+        self._notify("Desk Companion", "This is what a timer alert sounds like.")
+
+    def _notify(self, title: str, text: str) -> None:
+        if self.icon.HAS_NOTIFICATION:
+            self.icon.notify(text or title, title)
 
     def _status_text(self) -> str:
         st = self.companion.status
@@ -156,6 +165,7 @@ class TrayApp:
             Item("Sync now", lambda: self.companion.sync_now(), default=True),
             Item("Pause (free COM port)", self._toggle_pause, checked=lambda _: self.companion.status.paused),
             Item("Sign in to Google again", lambda: self.companion.sign_in_again()),
+            Item("Test alert sound", lambda: self._test_alert()),
             Item("Open log", lambda: os.startfile(paths.data_dir() / "companion.log")),
             Item("Start with Windows", self._toggle_startup, checked=lambda _: startup_enabled()),
             pystray.Menu.SEPARATOR,

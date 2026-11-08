@@ -80,6 +80,14 @@ start. At most 24 events (the device keeps the first 24).
 ```
 Sent at boot and in reply to a PC `hello`.
 
+### `alert`
+```json
+{"t":"alert","k":"timer","ti":"Time's up","tx":"Your timer has finished."}
+```
+Something needs the user's attention (`k` = `timer` or `focus`). The device has no
+speaker, so the companion plays the Windows notification sound and, in tray mode, shows
+a Windows notification. No ack is expected; it's ignored if no companion is listening.
+
 ### `ack` / `nak`
 ```json
 {"t":"ack","s":18}

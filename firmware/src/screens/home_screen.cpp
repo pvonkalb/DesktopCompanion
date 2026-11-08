@@ -9,6 +9,7 @@
 #include "pc_link.h"
 #include "settings.h"
 #include "timefmt.h"
+#include "timers.h"
 #include "ui/icons.h"
 #include "ui/ui.h"
 
@@ -18,7 +19,8 @@ using namespace theme;
 using ui::Font;
 
 // Layout (320 x 240). Baselines are shared across columns so rows line up.
-constexpr ui::Rect CLOCK_AREA   = {0, 0, 192, 114};
+constexpr ui::Rect CLOCK_AREA   = {0, 0, 192, 114};   // tap target
+constexpr ui::Rect CLOCK_DRAW   = {0, 0, 192, 93};    // repainted every minute; stops above the timer line
 constexpr ui::Rect WEATHER_AREA = {192, 0, 128, 114};
 constexpr ui::Rect UPNEXT       = {8, 118, 304, 114};
 constexpr int16_t  MARGIN       = 14;
@@ -34,13 +36,60 @@ constexpr uint32_t CHECK_MS     = 250;
 
 const char DEGREE[] = "\xC2\xB0";   // "°"
 
+constexpr ui::Rect TIMER_LINE = {0, 93, 192, 19};   // under the date, baseline 106
+
+// "Timer 4:12" / "Focus 18:22" / "Break 3:10" / "Timer done" - empty when nothing runs.
+bool timerLine(char* out, size_t len, uint16_t& colour) {
+    const uint32_t now = millis();
+    char t[12];
+    const timers::Countdown& cd = timers::countdown();
+    if (cd.state == timers::State::Done) { snprintf(out, len, "Timer done"); colour = STATUS_WARN; return true; }
+    if (cd.state == timers::State::Running || cd.state == timers::State::Paused) {
+        ui::formatCountdown(timers::countdownRemaining(now), t, sizeof(t));
+        snprintf(out, len, "Timer %s%s", t, cd.state == timers::State::Paused ? " (paused)" : "");
+        colour = ACCENT;
+        return true;
+    }
+    const timers::Focus& f = timers::focus();
+    if (f.state == timers::State::Running || f.state == timers::State::Paused) {
+        ui::formatCountdown(timers::focusRemaining(now), t, sizeof(t));
+        snprintf(out, len, "%s %s%s", f.phase == timers::Phase::Focus ? "Focus" : "Break", t,
+                 f.state == timers::State::Paused ? " (paused)" : "");
+        colour = f.phase == timers::Phase::Focus ? ACCENT : STATUS_OK;
+        return true;
+    }
+    const timers::Stopwatch& sw = timers::stopwatch();
+    if (sw.running || sw.accumulatedMs > 0) {
+        const uint32_t s = timers::stopwatchElapsed(now) / 1000;   // whole seconds: 1 redraw/s on Home
+        if (s >= 3600) snprintf(t, sizeof(t), "%lu:%02lu:%02lu", s / 3600UL, (s / 60) % 60, s % 60);
+        else snprintf(t, sizeof(t), "%lu:%02lu", s / 60, s % 60);
+        snprintf(out, len, "Stopwatch %s%s", t, sw.running ? "" : " (stopped)");
+        colour = sw.running ? ACCENT : TEXT_MUTED;
+        return true;
+    }
+    out[0] = '\0';
+    return false;
+}
+
 }  // namespace
+
+void HomeScreen::drawTimerLine(TFT_eSPI& tft) {
+    uint16_t colour = TEXT_MUTED;
+    timerLine(timerText_, sizeof(timerText_), colour);
+    ui::region(tft, TIMER_LINE.x, TIMER_LINE.y, TIMER_LINE.w, TIMER_LINE.h, BG, [&](TFT_eSPI& g, int16_t, int16_t) {
+        if (!timerText_[0]) return;
+        g.fillSmoothCircle(MARGIN + 3, 8, 3, colour, BG);
+        ui::setFont(g, Font::Label);
+        ui::text(g, timerText_, MARGIN + 11, 13, L_BASELINE, colour, BG);
+    });
+}
 
 void HomeScreen::enter(TFT_eSPI& tft, uint32_t nowMs) {
     tft.fillScreen(BG);
     cardPressed_ = weatherPressed_ = clockPressed_ = false;
     refreshStatus();
     drawClock(tft);
+    drawTimerLine(tft);
     drawWeather(tft);
     drawEvents(tft);
     lastCheckMs_ = nowMs;
@@ -51,7 +100,7 @@ void HomeScreen::drawClock(TFT_eSPI& tft) {
     const bool ok = timefmt::local(t);
     lastMinute_ = ok ? t.tm_min : -1;
 
-    ui::region(tft, CLOCK_AREA.x, CLOCK_AREA.y, CLOCK_AREA.w, CLOCK_AREA.h, BG,
+    ui::region(tft, CLOCK_DRAW.x, CLOCK_DRAW.y, CLOCK_DRAW.w, CLOCK_DRAW.h, BG,
                [&](TFT_eSPI& g, int16_t, int16_t) {
         char hm[8] = "--:--", ampm[4] = "", date[32] = "Waiting for time";
         if (ok) {
@@ -209,7 +258,14 @@ void HomeScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t) {
         case EventType::Tap:
             if (cardPressed_ && UPNEXT.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Calendar);
             else if (weatherPressed_ && WEATHER_AREA.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Weather);
-            else if (clockPressed_ && CLOCK_AREA.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Launcher);
+            else if (clockPressed_ && CLOCK_AREA.hit(ev.x, ev.y)) {
+                // a running timer line opens its screen; anywhere else on the clock opens Apps
+                if (timerText_[0] && ev.y >= TIMER_LINE.y)
+                    ui::nav::go(timerText_[0] == 'F' || timerText_[0] == 'B' ? ui::ScreenId::Focus
+                                                                             : ui::ScreenId::Timer);
+                else
+                    ui::nav::go(ui::ScreenId::Launcher);
+            }
             cardPressed_ = weatherPressed_ = clockPressed_ = false;
             break;
         case EventType::LongPress:
@@ -234,4 +290,9 @@ void HomeScreen::update(TFT_eSPI& tft, uint32_t nowMs) {
         drawEvents(tft);
     }
     if (st.weather.version != weatherVersion_) drawWeather(tft);
+
+    char line[sizeof(timerText_)];
+    uint16_t colour;
+    timerLine(line, sizeof(line), colour);
+    if (strcmp(line, timerText_) != 0) drawTimerLine(tft);
 }

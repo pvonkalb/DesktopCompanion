@@ -220,6 +220,15 @@ void loop(uint32_t) {
     }
 }
 
+void notify(const char* kind, const char* title, const char* text) {
+    JsonDocument d;
+    d["t"] = "alert";
+    d["k"] = kind;
+    d["ti"] = title;
+    d["tx"] = text;
+    send(d);
+}
+
 bool connected() { return rxEver && millis() - lastRxMs < CONNECTED_WINDOW_MS; }
 bool everConnected() { return rxEver; }
 

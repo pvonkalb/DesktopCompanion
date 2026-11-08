@@ -16,6 +16,9 @@ private:
     void drawEvents(TFT_eSPI& tft);
     void drawCardOutline(TFT_eSPI& tft, bool pressed);
     bool refreshStatus();   // true if the status line changed
+    void drawTimerLine(TFT_eSPI& tft);   // running timer / focus under the date
+
+    char timerText_[32] = "";
 
     char status_[40] = "";
     uint16_t statusColour_ = 0;

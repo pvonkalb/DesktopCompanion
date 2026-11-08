@@ -1,5 +1,5 @@
 // Desktop Companion firmware.
-// Current stage: Milestone 5 - calendar from the Windows companion over USB.
+// Current stage: Milestone 7 - timer, stopwatch and focus.
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
@@ -9,7 +9,10 @@
 #include "pc_link.h"
 #include "screens/calendar_screen.h"
 #include "screens/dev_screens.h"
+#include "screens/focus_screen.h"
 #include "screens/home_screen.h"
+#include "screens/timer_screen.h"
+#include "timers.h"
 #include "screens/launcher_screen.h"
 #include "screens/placeholder_screen.h"
 #include "screens/settings_screen.h"
@@ -32,8 +35,8 @@ LauncherScreen launcherScreen;
 SettingsScreen settingsScreen;
 WeatherScreen weatherScreen;
 SetupScreen setupScreen;
-PlaceholderScreen focusScreen("Focus", "Focus timer is on the roadmap");
-PlaceholderScreen timerScreen("Timer", "Countdown timer is on the roadmap");
+FocusScreen focusScreen;
+TimerScreen timerScreen;
 PlaceholderScreen musicScreen("Music", "Needs the optional PC companion");
 PlaceholderScreen pcScreen("PC", "Needs the optional PC companion");
 CalibrationScreen calibrationScreen;
@@ -109,6 +112,22 @@ void loop() {
         }
     } else {
         setupShownForPortal = false;
+    }
+
+    // Timers run regardless of screen; when one finishes, show it (unless calibrating)
+    // and let the PC companion play a sound / notification.
+    timers::loop(now);
+    if (timers::alertIsNew()) {
+        const bool countdown = timers::alert() == timers::Alert::Countdown;
+        const ScreenId target = countdown ? ScreenId::Timer : ScreenId::Focus;
+        if (ui::nav::current() != ScreenId::Calibration && ui::nav::current() != target) ui::nav::go(target);
+        if (countdown) {
+            pc_link::notify("timer", "Time's up", "Your timer has finished.");
+        } else {
+            const bool breakNext = timers::focus().phase != timers::Phase::Focus;
+            pc_link::notify("focus", breakNext ? "Break time" : "Focus time",
+                            breakNext ? "Focus session complete - take a break." : "Break's over - ready to focus?");
+        }
     }
 
     ui::nav::loop(tft, now);
