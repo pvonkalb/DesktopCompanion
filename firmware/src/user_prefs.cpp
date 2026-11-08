@@ -21,13 +21,30 @@ constexpr uint8_t IDLE_DEFAULT = 2;   // 1 min
 
 uint8_t idleIndex = IDLE_DEFAULT;
 
+constexpr const char* KEY_DIM = "dim";
+constexpr bool DIM_DEFAULT = true;    // calibrated on hardware 2026-11-07
+bool dim = DIM_DEFAULT;
+
 }  // namespace
+
+bool autoDim() { return dim; }
+
+void toggleAutoDim() {
+    dim = !dim;
+    Preferences prefs;
+    if (prefs.begin(NVS_NAMESPACE, false)) {
+        prefs.putBool(KEY_DIM, dim);
+        prefs.end();
+    }
+    Serial.printf("[prefs] night dimming: %s\n", dim ? "auto" : "off");
+}
 
 void load() {
     Preferences prefs;
     if (!prefs.begin(NVS_NAMESPACE, false)) return;
     const uint8_t v = prefs.getUChar(KEY_IDLE, IDLE_DEFAULT);
     idleIndex = v < IDLE_COUNT ? v : IDLE_DEFAULT;
+    dim = prefs.getBool(KEY_DIM, DIM_DEFAULT);
     prefs.end();
 }
 

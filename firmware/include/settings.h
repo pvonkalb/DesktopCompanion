@@ -23,8 +23,14 @@ constexpr const char* HOSTNAME          = "desk-companion";
 constexpr bool     DEMO_CALENDAR        = false;  // sample events when no PC calendar exists (UI testing)
 constexpr uint32_t CALENDAR_STALE_S     = 3UL * 60 * 60;  // flag a PC calendar older than this on Home
 
+// Night dimming: on-board light sensor (GPIO34), raw ADC. Darker = higher.
+// Measured on the dev unit 2026-11-07: room light 0, sensor covered ~210-240.
+constexpr int      LIGHT_NIGHT_ON       = 150;   // switch to night above this (held 8 s)
+constexpr int      LIGHT_NIGHT_OFF      = 60;    // back to day below this
+
 // Diagnostics
-constexpr bool     TOUCH_LOG       = true;    // log touch events + screen changes to serial
+constexpr bool     TOUCH_LOG       = false;   // log touch events + screen changes to serial
 constexpr bool     WIFIMANAGER_LOG = false;   // verbose setup-portal logging (diagnosing phone drop-outs)
+constexpr bool     LIGHT_LOG       = false;   // light-sensor readings every 5 s (calibrating night dimming)
 
 }  // namespace settings

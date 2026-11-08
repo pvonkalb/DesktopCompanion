@@ -5,13 +5,14 @@
 #include "net/network.h"
 #include "settings.h"
 #include "user_prefs.h"
+#include "version.h"
 
 namespace {
 
 using namespace theme;
 using ui::Font;
 
-enum Row { WIFI, IDLE, CALIBRATE, TOUCH_TEST };
+enum Row { WIFI, IDLE, DIM, CALIBRATE };
 
 struct RowDef {
     const char* label;
@@ -21,8 +22,8 @@ struct RowDef {
 const RowDef ROWS[] = {
     {"Wi-Fi & location", ui::ScreenId::Setup},
     {"Return to Home", ui::ScreenId::Home},
+    {"Night dimming", ui::ScreenId::Home},
     {"Recalibrate touch", ui::ScreenId::Calibration},
-    {"Touch test", ui::ScreenId::TouchTest},
 };
 
 constexpr int16_t ROW_H = 38, GAP = 4, LEFT = 8, WIDTH = 304, TOP = 50;
@@ -58,12 +59,15 @@ void SettingsScreen::drawAction(TFT_eSPI& tft, int i, bool pressed) {
                 snprintf(hint, sizeof(hint), "%s", user_prefs::idleReturnLabel());
                 hintColour = pressed ? TEXT : ACCENT;   // a value you change by tapping
                 break;
-            case CALIBRATE: snprintf(hint, sizeof(hint), "5 taps"); break;
-            default: snprintf(hint, sizeof(hint), "Draw"); break;
+            case DIM:
+                snprintf(hint, sizeof(hint), "%s", user_prefs::autoDim() ? "Auto" : "Off");
+                hintColour = pressed ? TEXT : ACCENT;
+                break;
+            default: snprintf(hint, sizeof(hint), "5 taps"); break;
         }
         const bool navigates = ROWS[i].target != ui::ScreenId::Home;
         const int16_t hintRight = navigates ? w - 32 : w - 16;
-        ui::setFont(g, i == IDLE ? Font::Body : Font::Label);
+        ui::setFont(g, i == IDLE || i == DIM ? Font::Body : Font::Label);
         char fitted[40];
         ui::fitText(g, hint, hintRight - 170, fitted, sizeof(fitted));
         ui::text(g, fitted, hintRight, h / 2 + 1, MR_DATUM, hintColour, fill);
@@ -82,9 +86,11 @@ void SettingsScreen::drawInfo(TFT_eSPI& tft) {
             case net::Link::Connecting: snprintf(wifi, sizeof(wifi), "Wi-Fi connecting\xE2\x80\xA6"); break;
             case net::Link::NotConfigured: snprintf(wifi, sizeof(wifi), "Wi-Fi not set up"); break;
         }
+        char line[80];
+        snprintf(line, sizeof(line), "v%s  \xC2\xB7  %s", FW_VERSION, wifi);
         ui::setFont(g, Font::Label);
-        char fitted[56];
-        ui::fitText(g, wifi, w - 32, fitted, sizeof(fitted));
+        char fitted[80];
+        ui::fitText(g, line, w - 32, fitted, sizeof(fitted));
         ui::text(g, fitted, w / 2, h / 2, MC_DATUM, TEXT_MUTED, BG);
     });
 }
@@ -107,6 +113,9 @@ void SettingsScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_
     } else if (hit - 1 == IDLE) {
         user_prefs::cycleIdleReturn();
         drawAction(tft, IDLE, false);
+    } else if (hit - 1 == DIM) {
+        user_prefs::toggleAutoDim();
+        drawAction(tft, DIM, false);
     } else if (hit > 0) {
         ui::nav::go(ROWS[hit - 1].target);
     }

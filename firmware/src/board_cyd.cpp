@@ -15,9 +15,24 @@ void initPins() {
     }
 }
 
-void setBacklight(bool on) {
-    digitalWrite(PIN_BACKLIGHT, on ? HIGH : LOW);
+namespace {
+constexpr uint8_t BL_CHANNEL = 7;      // LEDC channel (0-7 are free; TFT/touch don't use LEDC)
+constexpr uint32_t BL_FREQ_HZ = 5000;  // above audible / flicker range
+bool pwmReady = false;
+}  // namespace
+
+void setBrightness(uint8_t level) {
+    if (!pwmReady) {   // switch GPIO21 from plain output to PWM on first use
+        ledcSetup(BL_CHANNEL, BL_FREQ_HZ, 8);
+        ledcAttachPin(PIN_BACKLIGHT, BL_CHANNEL);
+        pwmReady = true;
+    }
+    ledcWrite(BL_CHANNEL, level);
 }
+
+void setBacklight(bool on) { setBrightness(on ? 255 : 0); }
+
+int readAmbientRaw() { return analogRead(PIN_LDR); }
 
 void setLed(bool r, bool g, bool b) {
     digitalWrite(PIN_LED_R, r ? LOW : HIGH);

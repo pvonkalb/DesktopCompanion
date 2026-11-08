@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "model.h"
+#include "version.h"
 
 namespace pc_link {
 namespace {
@@ -62,7 +63,7 @@ void sendHello() {
     d["t"] = "hello";
     d["v"] = PROTOCOL_VERSION;
     d["dev"] = "desk-companion";
-    d["fw"] = __DATE__ " " __TIME__;
+    d["fw"] = version::full();
     send(d);
 }
 

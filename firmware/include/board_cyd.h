@@ -31,6 +31,8 @@ constexpr int8_t PIN_LDR = 34;
 
 void initPins();                 // safe default state for all board peripherals
 void setBacklight(bool on);
+void setBrightness(uint8_t level);     // 0..255 PWM on the backlight
+int readAmbientRaw();                  // light sensor ADC (0..4095)
 void setLed(bool r, bool g, bool b);   // on-board RGB LED (handles the active-LOW wiring)
 
 }  // namespace board

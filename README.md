@@ -40,20 +40,24 @@ Protocol: docs/protocol.md.
 | 6. Companion tray app: background, starts with Windows, below-normal priority | **Verified** 2026-11-07 |
 | 7. Timer + stopwatch, focus (pomodoro); alerts on screen, RGB LED and PC chime | **Verified on hardware** 2026-11-07 |
 | 8. Music controls + PC stats (anti-cheat safe), Return-to-Home setting | **Verified on hardware** 2026-11-07 |
-| 9. Polish + portfolio write-up | Next |
+| 9. Wireless updates (OTA), night auto-dim, screen fade transitions, versioning | **Verified on hardware** 2026-11-07 |
+| 10. Portfolio write-up | Next |
 
 ## Build and flash
 
-From `firmware/` (or use the PlatformIO toolbar in VS Code):
+From `firmware/` (or use the PlatformIO toolbar in VS Code). First copy
+`firmware/secrets.example.ini` to `firmware/secrets.ini` and set a long random OTA password.
 
 ```
-pio run -e cyd                 # build
-pio run -e cyd -t upload       # flash via COM3
-pio device monitor             # serial log @ 115200
+pio run -e cyd_ota -t upload   # normal: wireless update over the home network
+pio run -e cyd -t upload       # first install / recovery: USB (COM3)
 ```
 
-**Uploading:** this board's auto-reset can't enter download mode. Start the upload, then
-**hold BOOT** while it shows `Connecting....`. The upload waits indefinitely for this.
+**Wireless (OTA):** password-protected, local network only; the device shows a progress
+screen. The first time, allow Python through Windows Firewall when asked.
+
+**USB:** this board's auto-reset can't enter download mode. Start the upload, then
+**hold BOOT** while it shows `Connecting....`. Stop the companion tray app first (it owns COM3).
 
 **First-time setup:** the device opens a setup Wi-Fi network and shows a QR code. Join it with a phone,
 pick your Wi-Fi and enter a city or ZIP code. Change it later under Settings > Wi-Fi & location.

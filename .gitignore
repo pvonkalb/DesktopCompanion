@@ -12,3 +12,5 @@ windows-companion/credentials.json
 windows-companion/client_secret*.json
 windows-companion/token.json
 windows-companion/config.json
+# firmware secrets (OTA password)
+firmware/secrets.ini

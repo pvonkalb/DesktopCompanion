@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "ui/screen.h"
 #include "user_prefs.h"
+#include "backlight.h"
 
 namespace ui {
 namespace nav {
@@ -13,6 +14,7 @@ ScreenId active = ScreenId::Home;
 ScreenId pending = ScreenId::Home;
 bool hasPending = false;
 bool pendingIsBack = false;
+bool forceRedraw = false;   // re-enter even if the target is the active screen (something drew over it)
 uint32_t lastTouchMs = 0;
 
 // Back history. Going Home clears it, so it never grows past a few levels.
@@ -41,6 +43,7 @@ void enter(TFT_eSPI& tft, ScreenId id, uint32_t now) {
         Serial.printf("[nav]   %7lu -> %s\n", static_cast<unsigned long>(now), NAMES[static_cast<size_t>(id)]);
     active = id;
     lastTouchMs = now;
+    backlight::dipForRedraw();   // soft transition: draw dimmed, then fade back up
     get(id)->enter(tft, now);
     lockoutUntil = millis() + settings::NAV_LOCKOUT_MS;   // after drawing, which takes time
     armed = false;
@@ -70,6 +73,11 @@ void go(ScreenId id) {
     hasPending = true;
 }
 
+void goHomeAndRedraw() {
+    go(ScreenId::Home);
+    forceRedraw = true;
+}
+
 void back() {
     pending = historyLen ? history[historyLen - 1] : ScreenId::Home;
     pendingIsBack = true;
@@ -96,7 +104,9 @@ void loop(TFT_eSPI& tft, uint32_t now) {
     }
     if (hasPending) {
         hasPending = false;
-        if (pending == active && pending != ScreenId::Calibration) return;
+        const bool force = forceRedraw;
+        forceRedraw = false;
+        if (pending == active && pending != ScreenId::Calibration && !force) return;
         if (pending == ScreenId::Home) {
             historyLen = 0;
         } else if (pendingIsBack) {

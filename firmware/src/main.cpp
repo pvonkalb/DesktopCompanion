@@ -14,6 +14,9 @@
 #include "screens/timer_screen.h"
 #include "timers.h"
 #include "user_prefs.h"
+#include "backlight.h"
+#include "ota.h"
+#include "version.h"
 #include "screens/launcher_screen.h"
 #include "screens/music_screen.h"
 #include "screens/pc_screen.h"
@@ -54,6 +57,7 @@ void setup() {
     Serial.setRxBufferSize(8192);   // calendar snapshots arrive in bursts while the UI draws
     Serial.begin(115200);
     board::initPins();
+    backlight::begin();   // PWM backlight, dark until the first frame is ready
 
     tft.init();
     tft.setRotation(board::DISPLAY_ROTATION);
@@ -91,7 +95,7 @@ void setup() {
                   haveCal ? "stored" : "none (using defaults)", forceCal ? ", forced by touch" : "");
 
     ui::nav::begin(tft, !haveCal || forceCal ? ScreenId::Calibration : ScreenId::Home);
-    board::setBacklight(true);   // reveal only after the first full frame is drawn
+    backlight::show();   // fade in only after the first full frame is drawn
 }
 
 void loop() {
@@ -134,5 +138,7 @@ void loop() {
         }
     }
 
+    backlight::loop(now);
+    ota::loop(tft);   // blocks only while an authorised update is actually streaming in
     ui::nav::loop(tft, now);
 }

@@ -18,7 +18,7 @@
 | CS | 15 | Strapping pin; fine as CS |
 | DC | 2 | Strapping pin; fine as DC |
 | RST | n/a | Wired to the ESP32 EN/reset line (`TFT_RST=-1`) |
-| Backlight | 21 | Active HIGH; owned by the firmware (`board::setBacklight`), not by TFT_eSPI |
+| Backlight | 21 | Active HIGH, driven by LEDC PWM (5 kHz, 8-bit) for night dimming and fade transitions; owned by the firmware, not TFT_eSPI |
 
 ### Touch, XPT2046 (separate bus, VSPI)
 | Signal | GPIO | Notes |
@@ -65,7 +65,7 @@ so `platformio.ini` pins the GitHub `v1.4` tag.
 | Peripheral | GPIO | Notes |
 |---|---|---|
 | RGB LED | R=4, G=16, B=17 | Active LOW; driven HIGH (off) at boot |
-| Light sensor (LDR) | 34 | Analog input. Possible later use: auto-dimming |
+| Light sensor (LDR) | 34 | Analog input, **darker = higher**. Dev unit: room light 0, covered ~210-240. Night dimming: night above 150, day below 60, 8 s hold |
 | Speaker connector | 26 | DAC/PWM |
 | SD card | SCK 18, MISO 19, MOSI 23, CS 5 | **16 GB card installed** on the dev unit. Unused so far, see note below |
 

@@ -33,6 +33,7 @@ void add(ScreenId id, Screen* screen);
 void begin(TFT_eSPI& tft, ScreenId first);
 void go(ScreenId id);                // takes effect at the end of the current loop iteration
 void back();                         // previous screen (Home if there is no history)
+void goHomeAndRedraw();              // Home, redrawn even if Home is already showing (after overlays)
 void loop(TFT_eSPI& tft, uint32_t nowMs);
 ScreenId current();
 

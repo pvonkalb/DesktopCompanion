@@ -13,4 +13,8 @@ uint32_t idleReturnMs();
 const char* idleReturnLabel();   // "Off", "30 s", "1 min", ...
 void cycleIdleReturn();          // next option, saved immediately
 
+// Night dimming from the light sensor.
+bool autoDim();
+void toggleAutoDim();
+
 }  // namespace user_prefs
