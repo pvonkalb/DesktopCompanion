@@ -40,7 +40,22 @@ IRQ goes LOW on touch; press and release are detected correctly.
 | | Raw range seen at the panel edges | Direction vs. screen |
 |---|---|---|
 | X | 287 – 3678 | same (raw rises left → right) |
-| Y | 294 – 3796 | **inverted** (raw falls top → bottom) |
+| Y | 294 – 3796 | same (raw rises top → bottom) |
+
+(The first manual test seemed to show an inverted Y, but the calibration logs prove it isn't.
+Calibration measures direction itself, so this never needs hard-coding.)
+
+### Touch calibration
+4 corner targets are fitted with a least-squares affine transform (this corrects inverted and
+swapped axes and slight rotation). A 5th centre tap must land within 12 px, or calibration
+reruns. The result is stored in NVS (`touch/cal`), so it survives reboots and reflashing.
+To force recalibration, **touch the screen while the board boots**.
+
+Dev unit results, 3 runs: centre error 5.1 / 7.0 / 6.6 px. Raw readings at the 24 px-inset
+targets: top-left ≈ (440, 570), bottom-right ≈ (3440, 3370).
+
+Using a stylus needs slightly firmer pressure than a finger (threshold `PRESSURE_MIN = 300`
+in `touch_input.cpp`). That's acceptable since the UI is designed for fingers.
 
 Pressure (z) while touched: min 562, 10th percentile 1387, median 2110. Noise threshold is 300.
 The registry build of `XPT2046_Touchscreen` is an old snapshot without `begin(SPIClass&)`,

@@ -4,128 +4,141 @@
 
 #include "board_cyd.h"
 #include "theme.h"
-#include "touch_input.h"
 
 namespace touch_test {
 namespace {
 
 using namespace theme;
+using touch_input::EventType;
 
 constexpr int16_t W = board::SCREEN_W;
 constexpr int16_t H = board::SCREEN_H;
 
-constexpr int16_t CARD_X = 8, CARD_Y = 172, CARD_W = W - 16, CARD_H = 60;
-constexpr int16_t COL_W = CARD_W / 4;
-constexpr int16_t LABEL_Y = CARD_Y + 7, VALUE_Y = CARD_Y + 26;
+struct Rect {
+    int16_t x, y, w, h;
+    bool contains(int16_t px, int16_t py) const {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
+};
 
-constexpr uint32_t POLL_MS       = 10;
-constexpr uint32_t VALUES_MS     = 80;    // throttle text redraws
-constexpr uint32_t LOG_MS        = 100;
-constexpr uint32_t CLEAR_AFTER_MS = 3000; // wipe the dot trail after this idle time
+constexpr int16_t HEADER_H = 36;
+constexpr int16_t BTN_H = 44;
+constexpr Rect CANVAS = {0, HEADER_H, W, H - HEADER_H - BTN_H - 2 * PAD};
+constexpr Rect BTN_CLEAR = {PAD, H - BTN_H - PAD, (W - 3 * PAD) / 2, BTN_H};
+constexpr Rect BTN_CAL = {static_cast<int16_t>(2 * PAD + (W - 3 * PAD) / 2), H - BTN_H - PAD,
+                          (W - 3 * PAD) / 2, BTN_H};
 
-// Common CYD raw ranges; ONLY used for the uncalibrated estimate dot.
-constexpr int16_t EST_X_MIN = 200, EST_X_MAX = 3700;
-constexpr int16_t EST_Y_MIN = 240, EST_Y_MAX = 3800;
+bool recalRequested = false;
+const Rect* pressedBtn = nullptr;   // button under the current press
+bool drawing = false;
+int16_t lastX = 0, lastY = 0;
 
-uint32_t lastPoll = 0, lastValues = 0, lastLog = 0, lastTouchMs = 0;
-bool wasTouched = false, trailDirty = false, lastIrq = false;
-touch_input::RawSample shown;   // what is currently on screen
-int16_t minX = INT16_MAX, maxX = INT16_MIN, minY = INT16_MAX, maxY = INT16_MIN;
-
-int16_t colCentre(int i) { return CARD_X + COL_W * i + COL_W / 2; }
-
-void drawIrq(TFT_eSPI& tft, bool active) {
-    tft.fillCircle(W - 16, 20, 6, active ? STATUS_OK : CARD_EDGE);
-    tft.setTextDatum(MR_DATUM);
-    tft.setTextColor(TEXT_MUTED, BG);
-    tft.drawString("IRQ", W - 28, 21, 2);
+void drawButton(TFT_eSPI& tft, const Rect& r, const char* label, bool pressed) {
+    const uint16_t fill = pressed ? ACCENT_ALT : CARD;
+    tft.fillRoundRect(r.x, r.y, r.w, r.h, RADIUS, fill);
+    tft.drawRoundRect(r.x, r.y, r.w, r.h, RADIUS, pressed ? ACCENT : CARD_EDGE);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TEXT, fill);
+    tft.drawString(label, r.x + r.w / 2, r.y + r.h / 2 + 1, 4);
 }
 
-void drawValue(TFT_eSPI& tft, int col, const char* text, uint16_t colour) {
-    tft.setTextDatum(TC_DATUM);
-    tft.setTextColor(colour, CARD);
-    tft.setTextPadding(COL_W - 6);
-    tft.drawString(text, colCentre(col), VALUE_Y, 4);
+void drawButtons(TFT_eSPI& tft) {
+    drawButton(tft, BTN_CLEAR, "Clear", pressedBtn == &BTN_CLEAR);
+    drawButton(tft, BTN_CAL, "Calibrate", pressedBtn == &BTN_CAL);
+}
+
+void drawStatus(TFT_eSPI& tft, const char* text) {
+    tft.setTextDatum(MR_DATUM);
+    tft.setTextColor(TEXT_MUTED, BG);
+    tft.setTextPadding(130);
+    tft.drawString(text, W - PAD - 4, HEADER_H / 2, 2);
     tft.setTextPadding(0);
 }
 
-void drawValues(TFT_eSPI& tft, const touch_input::RawSample& s) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", s.x); drawValue(tft, 0, buf, TEXT);
-    snprintf(buf, sizeof(buf), "%d", s.y); drawValue(tft, 1, buf, TEXT);
-    snprintf(buf, sizeof(buf), "%d", s.z); drawValue(tft, 2, buf, TEXT);
-    drawValue(tft, 3, s.touched ? "DOWN" : "UP", s.touched ? ACCENT : TEXT_MUTED);
-    shown = s;
+void clearCanvas(TFT_eSPI& tft) {
+    tft.fillRect(CANVAS.x, CANVAS.y, CANVAS.w, CANVAS.h, BG);
+    // faint guides at 1/4 points help judge accuracy
+    for (int i = 1; i < 4; ++i) {
+        tft.drawFastVLine(W * i / 4, CANVAS.y, CANVAS.h, CARD);
+        tft.drawFastHLine(0, CANVAS.y + CANVAS.h * i / 4, W, CARD);
+    }
 }
 
-void drawStatic(TFT_eSPI& tft) {
+void drawAll(TFT_eSPI& tft) {
     tft.fillScreen(BG);
-    tft.setTextDatum(TL_DATUM);
+    tft.setTextDatum(ML_DATUM);
     tft.setTextColor(TEXT, BG);
-    tft.drawString("Touch diagnostic", 12, 10, 4);
-    tft.setTextColor(TEXT_MUTED, BG);
-    tft.drawString("Tap around the screen, including the edges", 12, 38, 2);
-    tft.drawString("Dot = uncalibrated estimate", 12, 56, 2);
-
-    tft.fillRoundRect(CARD_X, CARD_Y, CARD_W, CARD_H, RADIUS, CARD);
-    tft.drawRoundRect(CARD_X, CARD_Y, CARD_W, CARD_H, RADIUS, CARD_EDGE);
-    const char* labels[] = {"RAW X", "RAW Y", "PRESSURE", "STATE"};
-    tft.setTextDatum(TC_DATUM);
-    tft.setTextColor(TEXT_MUTED, CARD);
-    for (int i = 0; i < 4; ++i) tft.drawString(labels[i], colCentre(i), LABEL_Y, 2);
-
-    drawIrq(tft, lastIrq);
-    drawValues(tft, shown);
-    trailDirty = false;
-}
-
-void plotEstimate(TFT_eSPI& tft, const touch_input::RawSample& s) {
-    const int16_t sx = constrain(map(s.x, EST_X_MIN, EST_X_MAX, 0, W - 1), 0, W - 1);
-    const int16_t sy = constrain(map(s.y, EST_Y_MIN, EST_Y_MAX, 0, H - 1), 0, H - 1);
-    tft.fillCircle(sx, sy, 3, ACCENT);
-    trailDirty = true;
+    tft.drawString("Touch test", PAD + 4, HEADER_H / 2, 4);
+    tft.drawFastHLine(0, HEADER_H - 1, W, CARD_EDGE);
+    clearCanvas(tft);
+    drawButtons(tft);
+    drawStatus(tft, "Draw or tap a button");
 }
 
 }  // namespace
 
 void begin(TFT_eSPI& tft) {
-    touch_input::begin();
-    drawStatic(tft);
-    Serial.println(F("[touch] raw diagnostic running - tap the screen"));
+    recalRequested = false;
+    pressedBtn = nullptr;
+    drawing = false;
+    drawAll(tft);
 }
 
-void update(TFT_eSPI& tft, uint32_t nowMs) {
-    if (nowMs - lastPoll < POLL_MS) return;
-    lastPoll = nowMs;
+void handle(TFT_eSPI& tft, const touch_input::Event& ev) {
+    char buf[24];
 
-    const bool irq = touch_input::irqActive();
-    if (irq != lastIrq) { lastIrq = irq; drawIrq(tft, irq); }
+    switch (ev.type) {
+        case EventType::Press:
+            if (BTN_CLEAR.contains(ev.x, ev.y)) pressedBtn = &BTN_CLEAR;
+            else if (BTN_CAL.contains(ev.x, ev.y)) pressedBtn = &BTN_CAL;
+            if (pressedBtn) { drawButtons(tft); break; }
+            drawing = CANVAS.contains(ev.x, ev.y);
+            if (drawing) tft.fillCircle(ev.x, ev.y, 2, ACCENT);
+            lastX = ev.x; lastY = ev.y;
+            break;
 
-    const touch_input::RawSample s = touch_input::readRaw();
+        case EventType::Move:
+            if (pressedBtn && !pressedBtn->contains(ev.x, ev.y)) {   // slid off: cancel
+                pressedBtn = nullptr;
+                drawButtons(tft);
+            }
+            if (drawing && CANVAS.contains(ev.x, ev.y)) {
+                tft.drawLine(lastX, lastY, ev.x, ev.y, ACCENT);
+                tft.drawLine(lastX + 1, lastY, ev.x + 1, ev.y, ACCENT);   // 2 px stroke
+                tft.drawLine(lastX, lastY + 1, ev.x, ev.y + 1, ACCENT);
+                lastX = ev.x; lastY = ev.y;
+            }
+            break;
 
-    if (s.touched) {
-        lastTouchMs = nowMs;
-        minX = min(minX, s.x); maxX = max(maxX, s.x);
-        minY = min(minY, s.y); maxY = max(maxY, s.y);
-        plotEstimate(tft, s);
-        if (nowMs - lastLog >= LOG_MS) {
-            lastLog = nowMs;
-            Serial.printf("[touch] x=%4d y=%4d z=%4d irq=%d\n", s.x, s.y, s.z, irq);
-        }
-    } else if (wasTouched) {
-        Serial.printf("[touch] release  seen range x=[%d..%d] y=[%d..%d]\n", minX, maxX, minY, maxY);
+        case EventType::Release:
+            if (pressedBtn) {
+                const Rect* btn = pressedBtn;
+                pressedBtn = nullptr;
+                drawButtons(tft);
+                if (btn->contains(ev.x, ev.y)) {   // activate on release inside, like a phone
+                    if (btn == &BTN_CLEAR) { clearCanvas(tft); drawStatus(tft, "Cleared"); }
+                    else recalRequested = true;
+                }
+            }
+            drawing = false;
+            break;
+
+        case EventType::Tap:
+            snprintf(buf, sizeof(buf), "Tap  %d, %d", ev.x, ev.y);
+            drawStatus(tft, buf);
+            break;
+
+        case EventType::LongPress:
+            if (!pressedBtn && CANVAS.contains(ev.x, ev.y)) tft.drawCircle(ev.x, ev.y, 14, STATUS_WARN);
+            snprintf(buf, sizeof(buf), "Hold  %d, %d", ev.x, ev.y);
+            drawStatus(tft, buf);
+            break;
     }
 
-    const bool stateChanged = s.touched != wasTouched;
-    wasTouched = s.touched;
-    if (stateChanged || (s.touched && nowMs - lastValues >= VALUES_MS)) {
-        lastValues = nowMs;
-        touch_input::RawSample display = s;
-        if (!s.touched) { display = shown; display.z = 0; display.touched = false; }  // keep last X/Y
-        drawValues(tft, display);
-    }
-
-    if (!s.touched && trailDirty && nowMs - lastTouchMs > CLEAR_AFTER_MS) drawStatic(tft);
+    if (ev.type == EventType::Tap || ev.type == EventType::LongPress)
+        Serial.printf("[touch] %s %d,%d\n", touch_input::eventName(ev.type), ev.x, ev.y);
 }
+
+bool wantsRecalibration() { return recalRequested; }
 
 }  // namespace touch_test

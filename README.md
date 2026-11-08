@@ -22,7 +22,8 @@ A Windows companion app (Python) is planned but not started.
 | Milestone | State |
 |---|---|
 | 1. Display bring-up (landscape diagnostic screen) | **Verified on hardware** 2026-11-07 (single-USB board, `env:cyd`) |
-| 2. Touch calibration | Not started |
+| 2. Touch input + calibration (NVS-stored, 5-point verified) | **Verified on hardware** 2026-11-07 (5–7 px centre error) |
+| 3. UI framework + home screen | Next |
 
 ## Build and flash
 
