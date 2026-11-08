@@ -22,5 +22,6 @@ constexpr const char* HOSTNAME          = "desk-companion";
 
 // Diagnostics
 constexpr bool     TOUCH_LOG       = true;    // log touch events + screen changes to serial
+constexpr bool     WIFIMANAGER_LOG = false;   // verbose setup-portal logging (diagnosing phone drop-outs)
 
 }  // namespace settings

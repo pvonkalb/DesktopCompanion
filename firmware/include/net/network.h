@@ -31,6 +31,7 @@ bool portalAutoOpened();
 const char* portalSsid();
 const char* portalPassword();
 bool portalSubmitted();          // user saved the form during this portal session
+bool restoredPreviousWifi();     // new Wi-Fi failed and the previous network was restored
 
 Link link();
 const char* ssid();              // connected / saved network name

@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <esp_random.h>
+#include <esp_wifi.h>
 #include <lwip/dns.h>
 #include <time.h>
 
@@ -37,6 +38,12 @@ uint32_t lastWeatherMs = 0;
 bool haveWeather = false;
 char lastErr[64] = "";
 LocationState locState = LocationState::Missing;
+bool closePortalWhenOnline = false;   // location re-saved unchanged: nothing left to do
+bool wifiSubmitted = false;           // Wi-Fi form saved in this portal session
+uint32_t wifiSubmittedMs = 0;
+wifi_config_t previousWifi{};         // last working credentials, restored if new ones fail
+bool havePreviousWifi = false;
+bool restoredWifi = false;
 
 // ---------------------------------------------------------------- shared with worker
 SemaphoreHandle_t lock = nullptr;
@@ -206,7 +213,10 @@ void readPortalParams() {
     char country[4] = "";
     for (int i = 0; i < 3 && c[i]; ++i) country[i] = static_cast<char>(toupper(c[i]));
     portalSubmittedFlag = true;
-    if (strcmp(q, loc.query) == 0 && strcmp(country, loc.country) == 0 && loc.resolved) return;   // unchanged
+    if (strcmp(q, loc.query) == 0 && strcmp(country, loc.country) == 0 && loc.resolved) {   // unchanged
+        closePortalWhenOnline = true;
+        return;
+    }
     snprintf(loc.query, sizeof(loc.query), "%s", q);
     snprintf(loc.country, sizeof(loc.country), "%s", country);
     loc.resolved = false;
@@ -214,6 +224,23 @@ void readPortalParams() {
     device_config::saveLocation();
     Serial.printf("[net] location set to '%s' %s\n", loc.query, loc.country);
     postLocationJob();
+}
+
+void onWifiSaved() {   // WiFiManager has just stored (and is trying) new credentials
+    wifiSubmitted = true;
+    wifiSubmittedMs = millis();
+    readPortalParams();
+    closePortalWhenOnline = false;   // let the connection attempt decide
+}
+
+void restorePreviousWifi() {
+    Serial.printf("[net] new Wi-Fi failed - restoring '%s'\n", reinterpret_cast<const char*>(previousWifi.sta.ssid));
+    esp_wifi_set_config(WIFI_IF_STA, &previousWifi);   // persisted by the WiFi driver
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();
+    restoredWifi = true;
+    wifiSubmitted = false;
+    connectStartMs = millis();
 }
 
 void makePortalCredentials() {
@@ -240,7 +267,8 @@ void begin() {
     // Heading so the location fields aren't missed below the Wi-Fi password.
     static WiFiManagerParameter heading(
         "<hr><h3 style='margin:12px 0 4px'>Your location</h3>"
-        "<p style='margin:0 0 8px;opacity:.75'>Needed for weather and the clock's time zone.</p>");
+        "<p style='margin:0 0 8px;opacity:.75'>Needed for weather and the clock's time zone. "
+        "After you tap Save, the device screen confirms.</p>");
     paramLocation = new WiFiManagerParameter("location", "City or ZIP code", loc.query, sizeof(loc.query) - 1);
     paramCountry = new WiFiManagerParameter("country", "Country code, optional (e.g. US)", loc.country, 2);
     wm.addParameter(&heading);
@@ -256,18 +284,30 @@ void begin() {
     wm.setShowInfoUpdate(false);
     wm.setShowInfoErase(false);
     wm.setRemoveDuplicateAPs(true);
-    wm.setDebugOutput(false);
-    wm.setSaveConfigCallback(readPortalParams);
+    wm.setDebugOutput(settings::WIFIMANAGER_LOG);
+    // Scanning takes the radio off the AP channel for seconds, and phones then drop
+    // the setup network (seen on hardware). Scan once when the portal opens - before
+    // a phone has joined - and serve that cached list instead of rescanning per page.
+    wm._preloadwifiscan = true;
+    wm._asyncScan = true;
+    wm._scancachetime = 10UL * 60 * 1000;
+    // The ESP32's default AP address (192.168.4.1) collides with home routers on
+    // 192.168.4.0/24 (seen on the dev network): traffic for the router went to the
+    // AP itself while setup was open. Use a range home routers rarely hand out.
+    wm.setAPStaticIPConfig(IPAddress(10, 42, 0, 1), IPAddress(10, 42, 0, 1), IPAddress(255, 255, 255, 0));
+    wm.setSaveConfigCallback(onWifiSaved);
     wm.setSaveParamsCallback(readPortalParams);
 
     postLocationJob();
     if (loc.resolved) applyTimezone(loc.tz, 0, false);   // known zone: clock is right as soon as NTP answers
 
-    xTaskCreatePinnedToCore(worker, "net", 10240, nullptr, 1, nullptr, 0);
+    // Priority 0 (= idle): the TLS handshake is several seconds of crypto; at a higher
+    // priority it starved IDLE0 and the task watchdog rebooted the device.
+    xTaskCreatePinnedToCore(worker, "net", 10240, nullptr, tskIDLE_PRIORITY, nullptr, 0);
 
     connectStartMs = millis();
     if (wm.getWiFiIsSaved()) {
-        Serial.printf("[net] connecting to saved network '%s'\n", WiFi.SSID().c_str());
+        Serial.printf("[net] connecting to saved network '%s'\n", wm.getWiFiSSID(true).c_str());
         WiFi.begin();
     } else {
         Serial.println(F("[net] no WiFi saved - opening setup portal"));
@@ -293,6 +333,11 @@ void startPortal(bool autoOpened) {
     portal = true;
     portalAuto = autoOpened;
     portalSubmittedFlag = false;
+    closePortalWhenOnline = false;
+    wifiSubmitted = false;
+    restoredWifi = false;
+    havePreviousWifi = everConnected && esp_wifi_get_config(WIFI_IF_STA, &previousWifi) == ESP_OK &&
+                       previousWifi.sta.ssid[0] != 0;
     Serial.printf("[net] setup portal '%s' (password %s) at %s\n", apSsid, apPass,
                   WiFi.softAPIP().toString().c_str());
 }
@@ -322,6 +367,16 @@ void loop(uint32_t now) {
     }
 
     const bool connected = WiFi.status() == WL_CONNECTED;
+    if (portal && closePortalWhenOnline && connected) {
+        closePortalWhenOnline = false;
+        stopPortal();
+    }
+    // New credentials that don't connect within 30 s: put the old, working ones back.
+    if (wifiSubmitted && !connected && havePreviousWifi && now - wifiSubmittedMs > 30000) {
+        if (portal) stopPortal();
+        restorePreviousWifi();
+    }
+    if (wifiSubmitted && connected) wifiSubmitted = false;
     if (connected != wasConnected) {
         wasConnected = connected;
         if (connected) {
@@ -394,6 +449,7 @@ bool portalAutoOpened() { return portalAuto; }
 const char* portalSsid() { return apSsid; }
 const char* portalPassword() { return apPass; }
 bool portalSubmitted() { return portalSubmittedFlag; }
+bool restoredPreviousWifi() { return restoredWifi; }
 
 Link link() {
     if (WiFi.status() == WL_CONNECTED) return Link::Online;

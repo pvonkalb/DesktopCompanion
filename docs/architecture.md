@@ -6,8 +6,8 @@ The device is a **standalone WiFi appliance**. It's built to keep working when m
 
 | Feature | Source | Needs PC? |
 |---|---|---|
-| Clock | NTP over WiFi *(Milestone 4; currently build time)* | No |
-| Weather | Open-Meteo over WiFi *(Milestone 4; currently demo data)* | No |
+| Clock | NTP over WiFi, time zone from the configured location | No |
+| Weather | Open-Meteo over HTTPS, every 15 min | No |
 | Calendar | Google Calendar *(Milestone 4+; access method TBD; currently demo data)* | No |
 | Countdown timer, focus timer | On-device | No |
 | PC stats, media controls | Optional Windows companion over USB serial | Yes |
@@ -74,6 +74,36 @@ Home --tap weather------------> Weather
 Data sources write into `model::state()` and increment that section's `version`.
 Screens remember the version they last drew and redraw when it changes. Future WiFi
 fetchers and the optional PC link plug in as additional writers without touching the screens.
+
+## Networking (`net/`)
+
+```
+net/network.*        WiFi state machine, setup portal (WiFiManager), worker task, result hand-off
+net/open_meteo.*     HTTPS geocoding + forecast (ArduinoJson), verified against bundled ISRG roots
+net/timezones.*      IANA -> POSIX TZ table (+ fixed-offset fallback)
+net/root_certs.h     ISRG Root X1 + X2 (public)
+device_config.*      location (query, name, lat/lon, IANA tz) in NVS "cfg"
+```
+
+- **Threads:** blocking HTTPS runs in a worker task on core 0 at *idle priority*. The
+  main loop posts jobs and applies results under a mutex. The worker never touches the UI
+  or the model directly.
+- **Setup portal:** phone joins `DeskCompanion-XXXX` (random password per session, QR on
+  screen). First run: one page with Wi-Fi + location. When already online: "Set location"
+  first. The portal closes itself when done. New Wi-Fi details that fail to connect are
+  rolled back to the previous working network after 30 s.
+- **Secrets:** Wi-Fi credentials live in the ESP32 WiFi driver's NVS; location in NVS
+  "cfg". Nothing is compiled in or committed.
+
+### Lessons from hardware testing
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Lookups failed ("connection reset") only while setup was open | Setup AP's default 192.168.4.1 equalled the home router's address | AP moved to 10.42.0.1; DNS forced to router/1.1.1.1 while the AP is up |
+| Device rebooted during weather fetches | TLS handshake (~3-5 s of crypto) at priority 1 starved IDLE0, so the task watchdog fired | Worker runs at idle priority |
+| Phone dropped the setup network on "Configure WiFi" | Per-page Wi-Fi scan takes the radio off the AP channel | Scan once when the portal opens; cache for 10 min |
+| Saving a wrong Wi-Fi password left the device offline | WiFiManager persists credentials before testing them | Snapshot + rollback of the previous credentials |
+| One failed lookup blocked time, weather and calendar | Transient errors were treated as final | Only "no match" is final; network errors retry with backoff |
 
 ## Tools
 

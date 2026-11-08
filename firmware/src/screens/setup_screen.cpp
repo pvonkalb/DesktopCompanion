@@ -18,7 +18,7 @@ constexpr ui::Rect TEXT_AREA = {162, 48, 152, 188};
 constexpr ui::Rect RETRY = {90, 176, 140, 44};
 constexpr ui::Rect BODY = {0, ui::HEADER_H, 320, 240 - ui::HEADER_H};
 constexpr uint32_t DONE_HOLD_MS = 3000;
-constexpr uint32_t CONNECT_GIVE_UP_MS = 40000;
+constexpr uint32_t CONNECT_GIVE_UP_MS = 60000;   // after the network layer's 30 s rollback
 
 // esp_qrcode reports the finished code through a plain callback.
 TFT_eSPI* qrTarget = nullptr;
@@ -149,7 +149,13 @@ void SetupScreen::drawBody(TFT_eSPI& tft) {
             drawMessage(tft, "Connected", line, net::ssid(), STATUS_OK);
             break;
         case Phase::Done:
-            drawMessage(tft, "All set", net::locationName(), "Time and weather will update shortly", STATUS_OK);
+            if (net::restoredPreviousWifi()) {
+                snprintf(line, sizeof(line), "Kept your previous Wi-Fi: %s", net::ssid());
+                drawMessage(tft, "Couldn't join", line, "Check the new network's password and try again",
+                            STATUS_WARN);
+            } else {
+                drawMessage(tft, "All set", net::locationName(), "Time and weather will update shortly", STATUS_OK);
+            }
             break;
         case Phase::NotFound:
             if (device_config::location().query[0])

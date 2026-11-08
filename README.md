@@ -34,7 +34,8 @@ A Windows companion app (Python) for PC-only features is optional and not starte
 | 3a. Screen framework, fonts, Home screen (demo data) | **Verified on hardware** 2026-11-07 |
 | 3b. Calendar (week strip + agenda), Apps launcher, Settings, back navigation | **Verified on hardware** 2026-11-07 |
 | 3c. Weather screen: Hourly (12 h) + 7 Day tabs | **Verified on hardware** 2026-11-07 |
-| 4. WiFi setup, NTP time, Open-Meteo weather | Next |
+| 4. WiFi + location setup from a phone, NTP time, live Open-Meteo weather | **Verified on hardware** 2026-11-07 |
+| 4b. Google Calendar (access method to decide) | Next |
 | 5. Timer + stopwatch, focus timer | Planned |
 
 ## Build and flash
@@ -50,6 +51,9 @@ pio device monitor             # serial log @ 115200
 **Uploading:** this board's auto-reset can't enter download mode. Start the upload, then
 **hold BOOT** while it shows `Connecting....`. The upload waits indefinitely for this.
 
-**Recalibrate touch:** hold a finger on the screen while the board powers up.
+**First-time setup:** the device opens a setup Wi-Fi network and shows a QR code. Join it with a phone,
+pick your Wi-Fi and enter a city or ZIP code. Change it later under Settings > Wi-Fi & location.
+
+**Recalibrate touch:** Settings > Recalibrate touch, or hold a finger on the screen while the board powers up.
 
 If colours look inverted, use `-e cyd2usb` instead (see docs/hardware.md).
