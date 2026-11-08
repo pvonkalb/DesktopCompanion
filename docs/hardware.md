@@ -65,7 +65,7 @@ so `platformio.ini` pins the GitHub `v1.4` tag.
 | Peripheral | GPIO | Notes |
 |---|---|---|
 | RGB LED | R=4, G=16, B=17 | Active LOW; driven HIGH (off) at boot |
-| Light sensor (LDR) | 34 | Analog input, **darker = higher**. Dev unit: room light 0, covered ~210-240. Night dimming: night above 150, day below 60, 8 s hold |
+| Light sensor (LDR) | 34 | Analog input, **darker = higher**. Read at **0 dB ADC attenuation**: at the default 11 dB the small sensor voltage sits in the ADC dead zone and reads a flat 0. Dev unit: room light 0, dark or covered 230-540. Night dimming: night above 150, day below 60, 8 s hold |
 | Speaker connector | 26 | DAC/PWM |
 | SD card | SCK 18, MISO 19, MOSI 23, CS 5 | **16 GB card installed** on the dev unit. Unused so far, see note below |
 

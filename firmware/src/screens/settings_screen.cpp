@@ -4,6 +4,7 @@
 
 #include "net/network.h"
 #include "settings.h"
+#include "backlight.h"
 #include "user_prefs.h"
 #include "version.h"
 
@@ -59,8 +60,9 @@ void SettingsScreen::drawAction(TFT_eSPI& tft, int i, bool pressed) {
                 snprintf(hint, sizeof(hint), "%s", user_prefs::idleReturnLabel());
                 hintColour = pressed ? TEXT : ACCENT;   // a value you change by tapping
                 break;
-            case DIM:
-                snprintf(hint, sizeof(hint), "%s", user_prefs::autoDim() ? "Auto" : "Off");
+            case DIM:   // shows when night mode is currently active
+                snprintf(hint, sizeof(hint), "%s%s", user_prefs::autoDim() ? "Auto" : "Off",
+                         backlight::isNight() ? " \xC2\xB7 night" : "");
                 hintColour = pressed ? TEXT : ACCENT;
                 break;
             default: snprintf(hint, sizeof(hint), "5 taps"); break;
@@ -101,6 +103,16 @@ void SettingsScreen::enter(TFT_eSPI& tft, uint32_t) {
     ui::drawHeader(tft, "Settings", false);
     for (int i = 0; i < ACTIONS; ++i) drawAction(tft, i, false);
     drawInfo(tft);
+}
+
+void SettingsScreen::update(TFT_eSPI& tft, uint32_t now) {
+    if (buttons_.pressed() >= 0 || now - lastAmbientMs_ < 1000) return;
+    lastAmbientMs_ = now;
+    const int a = backlight::isNight() ? 1 : 0;   // redraw the row when night mode flips
+    if (a != lastAmbient_) {
+        lastAmbient_ = a;
+        drawAction(tft, DIM, false);
+    }
 }
 
 void SettingsScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t) {

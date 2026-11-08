@@ -32,7 +32,17 @@ void setBrightness(uint8_t level) {
 
 void setBacklight(bool on) { setBrightness(on ? 255 : 0); }
 
-int readAmbientRaw() { return analogRead(PIN_LDR); }
+int readAmbientRaw() {
+    // The CYD's light sensor only produces a small voltage, which sits in the ESP32 ADC's
+    // dead zone at the default 11 dB range (room light read as a flat 0). 0 dB attenuation
+    // (~0-1.1 V full scale) gives far more resolution at the bottom end.
+    static bool configured = false;
+    if (!configured) {
+        analogSetPinAttenuation(PIN_LDR, ADC_0db);
+        configured = true;
+    }
+    return analogRead(PIN_LDR);
+}
 
 void setLed(bool r, bool g, bool b) {
     digitalWrite(PIN_LED_R, r ? LOW : HIGH);

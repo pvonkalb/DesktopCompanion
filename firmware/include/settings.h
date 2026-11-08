@@ -24,7 +24,7 @@ constexpr bool     DEMO_CALENDAR        = false;  // sample events when no PC ca
 constexpr uint32_t CALENDAR_STALE_S     = 3UL * 60 * 60;  // flag a PC calendar older than this on Home
 
 // Night dimming: on-board light sensor (GPIO34), raw ADC. Darker = higher.
-// Measured on the dev unit 2026-11-07: room light 0, sensor covered ~210-240.
+// ADC at 0 dB attenuation (board_cyd.cpp). Dev unit 2026-11-07: room light 0, dark / covered 230-540.
 constexpr int      LIGHT_NIGHT_ON       = 150;   // switch to night above this (held 8 s)
 constexpr int      LIGHT_NIGHT_OFF      = 60;    // back to day below this
 
