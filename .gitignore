@@ -1,0 +1,9 @@
+firmware/.pio/
+firmware/.vscode/
+__pycache__/
+*.pyc
+.venv/
+# secrets / tokens - never commit
+*.token.json
+credentials*.json
+.env
