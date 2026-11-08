@@ -1,6 +1,6 @@
 #pragma once
 // Ambient home: clock + date (left), current weather (right), "Up next" card.
-// Tap weather -> Weather, tap card -> Calendar, long-press anywhere -> Launcher.
+// Tap weather -> Weather, tap card -> Calendar, tap clock (or long-press anywhere) -> Launcher.
 
 #include "ui/screen.h"
 
@@ -22,4 +22,5 @@ private:
     uint32_t lastCheckMs_ = 0;
     bool cardPressed_ = false;
     bool weatherPressed_ = false;
+    bool clockPressed_ = false;
 };

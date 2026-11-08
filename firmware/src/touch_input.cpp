@@ -5,19 +5,23 @@
 #include <XPT2046_Touchscreen.h>
 
 #include "board_cyd.h"
+#include "settings.h"
 
 namespace touch_input {
 namespace {
 
 // Tuning (measured on the dev unit: touched pressure min ~560, median ~2100)
-constexpr int16_t  PRESSURE_MIN    = 300;   // below this a reading is noise
+// Pressure hysteresis: a touch must be firm to START (light stylus contact drifts
+// and used to split one gesture into two), but may lighten to HOLD_Z while held.
+constexpr int16_t  PRESSURE_MIN    = 300;   // below this a reading is noise / release
+constexpr int16_t  PRESS_START_Z   = 500;   // finger min seen 562; light stylus contact 430-490
 constexpr uint32_t SAMPLE_MS       = 10;    // 100 Hz
 constexpr uint8_t  PRESS_CONFIRM   = 2;     // consecutive touched samples to start a press
-constexpr uint8_t  RELEASE_CONFIRM = 3;     // consecutive untouched samples to end it (bridges brief lift-offs)
+constexpr uint8_t  RELEASE_CONFIRM = 8;     // consecutive untouched samples to end it (stylus lightens >50 ms mid-hold)
 constexpr float    SMOOTHING       = 0.5f;  // EMA weight of each new raw sample
 constexpr uint32_t TAP_MAX_MS      = 500;
-constexpr uint32_t LONG_PRESS_MS   = 700;
-constexpr int16_t  SLOP_PX         = 15;    // movement allowed for tap / long-press
+constexpr uint32_t LONG_PRESS_MS   = 550;
+constexpr int16_t  SLOP_PX         = 20;    // movement allowed for tap / long-press
 
 constexpr uint8_t QUEUE_LEN = 4;
 
@@ -25,10 +29,13 @@ SPIClass touchSpi(VSPI);   // display uses HSPI, so VSPI is free
 XPT2046_Touchscreen ts(board::PIN_TOUCH_CS, board::PIN_TOUCH_IRQ);
 touch_cal::Matrix cal = touch_cal::defaults();
 
+constexpr int16_t PRESS_AGREE_RAW = 150;   // confirm samples must agree (~13 px) - rejects lift-off noise
+
 bool down = false;
 uint8_t touchedRun = 0, releasedRun = 0;
+int16_t firstX = 0, firstY = 0;            // first sample of a candidate press
 float rawX = 0, rawY = 0;
-int16_t posX = 0, posY = 0, pressX = 0, pressY = 0;
+int16_t posX = 0, posY = 0, pressX = 0, pressY = 0, lastZ = 0;
 uint32_t pressMs = 0, lastSample = 0;
 bool longFired = false, leftSlop = false;
 
@@ -39,6 +46,9 @@ void push(EventType t) {
     if (qCount == QUEUE_LEN) return;   // drop if the app falls behind (never blocks)
     queue[(qHead + qCount) % QUEUE_LEN] = {t, posX, posY};
     ++qCount;
+    if (settings::TOUCH_LOG && t != EventType::Move)
+        Serial.printf("[touch] %7lu %-7s %3d,%3d  raw=%4.0f,%4.0f z=%d\n", static_cast<unsigned long>(millis()),
+                      eventName(t), posX, posY, rawX, rawY, lastZ);
 }
 
 void updatePosition() {
@@ -62,8 +72,20 @@ void sample(uint32_t now) {
     }
 
     releasedRun = 0;
+    lastZ = s.z;
     if (!down) {
-        if (++touchedRun < PRESS_CONFIRM) return;
+        if (s.z < PRESS_START_Z) { touchedRun = 0; return; }   // too light to start a gesture
+        if (touchedRun == 0 ||
+            abs(s.x - firstX) > PRESS_AGREE_RAW || abs(s.y - firstY) > PRESS_AGREE_RAW) {
+            if (settings::TOUCH_LOG && touchedRun > 0)
+                Serial.printf("[touch] rejected unstable press (%d,%d)->(%d,%d) z=%d\n",
+                              firstX, firstY, s.x, s.y, s.z);
+            firstX = s.x; firstY = s.y;   // (re)start candidate press
+            touchedRun = 1;
+            if (touchedRun < PRESS_CONFIRM) return;
+        } else if (++touchedRun < PRESS_CONFIRM) {
+            return;
+        }
         down = true;
         rawX = s.x; rawY = s.y;
         updatePosition();

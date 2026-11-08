@@ -55,6 +55,11 @@ int roundTemp(float celsius);   // converted to the configured unit and rounded
 struct Rect {
     int16_t x, y, w, h;
     bool contains(int16_t px, int16_t py) const { return px >= x && px < x + w && py >= y && py < y + h; }
+    // Touch target: the visual rect plus a margin. Resistive touch jitters by a few
+    // px, and visual edges near the screen border should extend to the border.
+    bool hit(int16_t px, int16_t py, int16_t margin = 10) const {
+        return px >= x - margin && px < x + w + margin && py >= y - margin && py < y + h + margin;
+    }
 };
 
 }  // namespace ui

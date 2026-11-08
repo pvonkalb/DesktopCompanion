@@ -33,7 +33,7 @@ const char DEGREE[] = "\xC2\xB0";   // "°"
 
 void HomeScreen::enter(TFT_eSPI& tft, uint32_t nowMs) {
     tft.fillScreen(BG);
-    cardPressed_ = weatherPressed_ = false;
+    cardPressed_ = weatherPressed_ = clockPressed_ = false;
     drawClock(tft);
     drawWeather(tft);
     drawEvents(tft);
@@ -162,21 +162,24 @@ void HomeScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t) {
     using touch_input::EventType;
     switch (ev.type) {
         case EventType::Press:
-            cardPressed_ = UPNEXT.contains(ev.x, ev.y);
-            weatherPressed_ = WEATHER_AREA.contains(ev.x, ev.y);
+            cardPressed_ = UPNEXT.hit(ev.x, ev.y);
+            weatherPressed_ = !cardPressed_ && WEATHER_AREA.hit(ev.x, ev.y);   // padded targets overlap: card wins
+            clockPressed_ = !cardPressed_ && !weatherPressed_ && CLOCK_AREA.contains(ev.x, ev.y);
             if (cardPressed_) drawCardOutline(tft, true);
             break;
         case EventType::Move:
-            if (cardPressed_ && !UPNEXT.contains(ev.x, ev.y)) { cardPressed_ = false; drawCardOutline(tft, false); }
-            if (weatherPressed_ && !WEATHER_AREA.contains(ev.x, ev.y)) weatherPressed_ = false;
+            if (cardPressed_ && !UPNEXT.hit(ev.x, ev.y)) { cardPressed_ = false; drawCardOutline(tft, false); }
+            if (weatherPressed_ && !WEATHER_AREA.hit(ev.x, ev.y)) weatherPressed_ = false;
+            if (clockPressed_ && !CLOCK_AREA.hit(ev.x, ev.y)) clockPressed_ = false;
             break;
         case EventType::Release:
             if (cardPressed_) drawCardOutline(tft, false);
             break;
         case EventType::Tap:
-            if (cardPressed_ && UPNEXT.contains(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Calendar);
-            else if (weatherPressed_ && WEATHER_AREA.contains(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Weather);
-            cardPressed_ = weatherPressed_ = false;
+            if (cardPressed_ && UPNEXT.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Calendar);
+            else if (weatherPressed_ && WEATHER_AREA.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Weather);
+            else if (clockPressed_ && CLOCK_AREA.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Launcher);
+            cardPressed_ = weatherPressed_ = clockPressed_ = false;
             break;
         case EventType::LongPress:
             ui::nav::go(ui::ScreenId::Launcher);

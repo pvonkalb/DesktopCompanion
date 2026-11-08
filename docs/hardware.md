@@ -67,7 +67,13 @@ so `platformio.ini` pins the GitHub `v1.4` tag.
 | RGB LED | R=4, G=16, B=17 | Active LOW; driven HIGH (off) at boot |
 | Light sensor (LDR) | 34 | Analog input. Possible later use: auto-dimming |
 | Speaker connector | 26 | DAC/PWM |
-| SD card | 18/19/23, CS 5 | VSPI pins, different CS. Unused |
+| SD card | SCK 18, MISO 19, MOSI 23, CS 5 | **16 GB card installed** on the dev unit. Unused so far, see note below |
+
+**SD vs. touch bus conflict:** the SD slot is wired to the default VSPI pins, but touch
+already uses the VSPI peripheral on *different* pins (25/32/39/33). One SPI peripheral can't
+drive two pin sets at once. Plan for when SD is needed: move the XPT2046 to a software
+(bit-banged) SPI, since it only needs ~2 MHz, and give VSPI to the SD card.
+Candidate uses: offline weather/calendar cache, logs, photo-frame mode.
 
 ## Display configuration
 

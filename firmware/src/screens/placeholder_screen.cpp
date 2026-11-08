@@ -33,15 +33,15 @@ void PlaceholderScreen::enter(TFT_eSPI& tft, uint32_t) {
 
 void PlaceholderScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t) {
     using touch_input::EventType;
-    if (ev.type == EventType::Press && BACK.contains(ev.x, ev.y)) {
+    if (ev.type == EventType::Press && BACK.hit(ev.x, ev.y)) {
         backPressed_ = true;
         drawBack(tft, true);
-    } else if (ev.type == EventType::Move && backPressed_ && !BACK.contains(ev.x, ev.y)) {
+    } else if (ev.type == EventType::Move && backPressed_ && !BACK.hit(ev.x, ev.y)) {
         backPressed_ = false;
         drawBack(tft, false);
     } else if (ev.type == EventType::Release && backPressed_) {
         backPressed_ = false;
         drawBack(tft, false);
-        if (BACK.contains(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Home);
+        if (BACK.hit(ev.x, ev.y)) ui::nav::go(ui::ScreenId::Home);
     }
 }
