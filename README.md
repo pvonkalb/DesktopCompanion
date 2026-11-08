@@ -1,21 +1,28 @@
 # Desktop Companion
 
-A desktop companion built on the ESP32-2432S028R "Cheap Yellow Display" (320×240 touchscreen),
-connected to a Windows PC over USB.
+A standalone smart display built on the ESP32-2432S028R "Cheap Yellow Display"
+(320×240 resistive touchscreen). It's an always-on clock, weather and shared-calendar glance
+screen for the desk or kitchen, with optional PC stats and media controls when it's
+plugged into a Windows PC.
+
+![Font preview](assets/fonts/preview.png)
 
 ## Layout
 
 ```
 DesktopCompanion/
-  firmware/          PlatformIO project (Arduino, TFT_eSPI)
-    platformio.ini   board + TFT_eSPI display configuration
-    include/         board_cyd.h (pin map), theme.h (design tokens), module headers
-    src/             main.cpp, board + display modules
-  docs/hardware.md   pin map, display config, troubleshooting
-  assets/icons/
+  firmware/            PlatformIO project (Arduino, TFT_eSPI)
+    platformio.ini     board + TFT_eSPI display configuration
+    include/, src/     modules (see docs/architecture.md)
+    scripts/           build helpers
+  tools/make_fonts.py  TTF -> anti-aliased TFT_eSPI fonts
+  assets/fonts/        Inter (SIL OFL) + generated preview
+  docs/
+    architecture.md    system + firmware design
+    hardware.md        pin map, display/touch config, troubleshooting
 ```
 
-A Windows companion app (Python) is planned but not started.
+A Windows companion app (Python) for PC-only features is optional and not started.
 
 ## Status
 
@@ -23,7 +30,9 @@ A Windows companion app (Python) is planned but not started.
 |---|---|
 | 1. Display bring-up (landscape diagnostic screen) | **Verified on hardware** 2026-11-07 (single-USB board, `env:cyd`) |
 | 2. Touch input + calibration (NVS-stored, 5-point verified) | **Verified on hardware** 2026-11-07 (5–7 px centre error) |
-| 3. UI framework + home screen | Next |
+| 3a. Screen framework, fonts, Home screen (demo data) | **Verified on hardware** 2026-11-07 |
+| 3b. Calendar screen (week strip + agenda), launcher grid | Next |
+| 4. WiFi setup, NTP time, Open-Meteo weather | Planned |
 
 ## Build and flash
 
@@ -37,5 +46,7 @@ pio device monitor             # serial log @ 115200
 
 **Uploading:** this board's auto-reset can't enter download mode. Start the upload, then
 **hold BOOT** while it shows `Connecting....`. The upload waits indefinitely for this.
+
+**Recalibrate touch:** hold a finger on the screen while the board powers up.
 
 If colours look inverted, use `-e cyd2usb` instead (see docs/hardware.md).
