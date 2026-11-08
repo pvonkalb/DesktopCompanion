@@ -2,7 +2,10 @@
 
 #include <time.h>
 
+#include <string.h>
+
 #include "model.h"
+#include "net/network.h"
 #include "timefmt.h"
 #include "ui/icons.h"
 #include "ui/ui.h"
@@ -34,6 +37,7 @@ const char DEGREE[] = "\xC2\xB0";   // "°"
 void HomeScreen::enter(TFT_eSPI& tft, uint32_t nowMs) {
     tft.fillScreen(BG);
     cardPressed_ = weatherPressed_ = clockPressed_ = false;
+    refreshStatus();
     drawClock(tft);
     drawWeather(tft);
     drawEvents(tft);
@@ -61,7 +65,23 @@ void HomeScreen::drawClock(TFT_eSPI& tft) {
         }
         ui::setFont(g, Font::Body);
         ui::text(g, date, MARGIN, SUB_BASELINE, L_BASELINE, TEXT_MUTED, BG);
+
+        if (status_[0]) {   // connectivity / data problems only; hidden when all is well
+            ui::setFont(g, Font::Label);
+            g.fillSmoothCircle(MARGIN + 3, 11, 3, statusColour_, BG);
+            ui::text(g, status_, MARGIN + 11, 16, L_BASELINE, statusColour_, BG);
+        }
     });
+}
+
+bool HomeScreen::refreshStatus() {
+    char s[sizeof(status_)] = "";
+    uint16_t colour = TEXT_MUTED;
+    if (!net::statusLine(s, sizeof(s), colour)) s[0] = '\0';
+    if (strcmp(s, status_) == 0 && colour == statusColour_) return false;
+    snprintf(status_, sizeof(status_), "%s", s);
+    statusColour_ = colour;
+    return true;
 }
 
 void HomeScreen::drawWeather(TFT_eSPI& tft) {
@@ -195,9 +215,10 @@ void HomeScreen::update(TFT_eSPI& tft, uint32_t nowMs) {
     const int minute = timefmt::local(t) ? t.tm_min : -1;
     const model::State& st = model::state();
 
-    if (minute != lastMinute_) {
+    const bool statusChanged = refreshStatus();
+    if (minute != lastMinute_ || statusChanged) {
         drawClock(tft);
-        if (!cardPressed_) drawEvents(tft);   // countdowns change every minute
+        if (minute != lastMinute_ && !cardPressed_) drawEvents(tft);   // countdowns change every minute
     } else if (st.calendar.version != calendarVersion_ && !cardPressed_) {
         drawEvents(tft);
     }

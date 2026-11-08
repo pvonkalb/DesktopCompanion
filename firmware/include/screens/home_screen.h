@@ -15,6 +15,10 @@ private:
     void drawWeather(TFT_eSPI& tft);
     void drawEvents(TFT_eSPI& tft);
     void drawCardOutline(TFT_eSPI& tft, bool pressed);
+    bool refreshStatus();   // true if the status line changed
+
+    char status_[40] = "";
+    uint16_t statusColour_ = 0;
 
     int lastMinute_ = -1;
     uint32_t weatherVersion_ = 0;

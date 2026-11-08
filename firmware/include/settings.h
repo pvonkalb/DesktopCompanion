@@ -11,6 +11,15 @@ constexpr bool     WEEK_STARTS_MONDAY = false; // calendar week strip starts on 
 constexpr uint32_t IDLE_RETURN_MS  = 60000;   // other screens fall back to Home after this
 constexpr uint32_t NAV_LOCKOUT_MS  = 100;     // input ignored right after a screen change
 
+// Network
+constexpr uint32_t WEATHER_REFRESH_MS   = 15UL * 60 * 1000;   // Open-Meteo updates hourly; 15 min is plenty
+constexpr uint32_t WEATHER_STALE_MS     = 2UL * 60 * 60 * 1000; // flag weather older than this on Home
+constexpr uint32_t FIRST_CONNECT_MS     = 45000;  // no connection since boot -> open setup portal
+constexpr uint16_t PORTAL_TIMEOUT_S     = 180;    // auto-opened portal closes after idle, then WiFi retries
+constexpr const char* NTP_SERVER_1      = "pool.ntp.org";
+constexpr const char* NTP_SERVER_2      = "time.google.com";
+constexpr const char* HOSTNAME          = "desk-companion";
+
 // Diagnostics
 constexpr bool     TOUCH_LOG       = true;    // log touch events + screen changes to serial
 

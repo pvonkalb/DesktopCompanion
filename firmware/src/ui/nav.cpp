@@ -26,7 +26,7 @@ uint32_t lockoutUntil = 0;
 bool armed = true;
 
 const char* const NAMES[] = {"Home", "Weather", "Calendar", "Launcher", "Calibration", "TouchTest",
-                             "Focus", "Timer", "Music", "PcStats", "Settings"};
+                             "Focus", "Timer", "Music", "PcStats", "Settings", "Setup"};
 static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == static_cast<size_t>(ScreenId::Count), "NAMES out of sync");
 
 Screen* get(ScreenId id) { return screens[static_cast<size_t>(id)]; }

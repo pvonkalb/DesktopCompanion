@@ -14,7 +14,7 @@ namespace ui {
 
 enum class ScreenId : uint8_t {
     Home, Weather, Calendar, Launcher, Calibration, TouchTest,
-    Focus, Timer, Music, PcStats, Settings,
+    Focus, Timer, Music, PcStats, Settings, Setup,
     Count
 };
 

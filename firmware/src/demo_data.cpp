@@ -64,7 +64,7 @@ void setClockFromBuildTime() {
     settimeofday(&tv, nullptr);
 }
 
-void load() {
+void loadWeather() {
     model::State& st = model::state();
 
     model::Weather& w = st.weather;
@@ -116,7 +116,11 @@ void load() {
     w.dailyCount = model::DAILY;
     ++w.version;
 
-    model::Calendar& c = st.calendar;
+}
+
+void loadCalendar() {
+    model::Calendar& c = model::state().calendar;
+    const time_t now = time(nullptr);
     c.source = model::Source::Demo;
     c.count = 0;
     // calendar 0 = yours (cyan), calendar 1 = shared from your wife (violet)

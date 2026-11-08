@@ -1,5 +1,5 @@
 #pragma once
-// Settings: device actions (touch calibration, touch test) + read-only info.
+// Settings: device actions (Wi-Fi & location, touch calibration, touch test) + status info.
 
 #include "ui/screen.h"
 #include "ui/widgets.h"
@@ -11,7 +11,7 @@ public:
     void handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t nowMs) override;
 
 private:
-    static constexpr int ACTIONS = 2;
+    static constexpr int ACTIONS = 3;
     void drawAction(TFT_eSPI& tft, int index, bool pressed);
     void drawInfo(TFT_eSPI& tft);
 

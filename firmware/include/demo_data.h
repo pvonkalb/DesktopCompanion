@@ -5,6 +5,7 @@
 namespace demo_data {
 
 void setClockFromBuildTime();   // sets the RTC to the firmware build time (local)
-void load();                    // fills model::state() with sample weather + events
+void loadWeather();             // sample current/hourly/daily weather (offline UI testing)
+void loadCalendar();            // sample events relative to now - call once the clock is valid
 
 }  // namespace demo_data

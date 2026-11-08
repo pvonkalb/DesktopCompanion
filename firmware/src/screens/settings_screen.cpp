@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+#include "net/network.h"
 #include "settings.h"
 
 namespace {
@@ -16,19 +17,26 @@ struct Action {
 };
 
 const Action ACTION_LIST[] = {
+    {"Wi-Fi & location", "Phone setup", ui::ScreenId::Setup},
     {"Recalibrate touch", "5 taps", ui::ScreenId::Calibration},
-    {"Touch test", "Draw + accuracy", ui::ScreenId::TouchTest},
+    {"Touch test", "Draw", ui::ScreenId::TouchTest},
 };
 
-constexpr int16_t ROW_H = 44, LEFT = 8, WIDTH = 304, ACTIONS_TOP = 52;
-constexpr ui::Rect INFO = {8, 152, 304, 82};
+constexpr int16_t ROW_H = 40, GAP = 4, LEFT = 8, WIDTH = 304, ACTIONS_TOP = 50;
+constexpr ui::Rect INFO = {8, 184, 304, 52};
+
+const char* signalWord(int rssi) {
+    if (rssi >= -60) return "strong";
+    if (rssi >= -72) return "good";
+    return "weak";
+}
 
 }  // namespace
 
 SettingsScreen::SettingsScreen() : buttons_(rects_, ACTIONS + 1) {
     rects_[0] = ui::HEADER_BACK;
     for (int i = 0; i < ACTIONS; ++i)
-        rects_[i + 1] = {LEFT, static_cast<int16_t>(ACTIONS_TOP + i * (ROW_H + 4)), WIDTH, ROW_H};
+        rects_[i + 1] = {LEFT, static_cast<int16_t>(ACTIONS_TOP + i * (ROW_H + GAP)), WIDTH, ROW_H};
 }
 
 void SettingsScreen::drawAction(TFT_eSPI& tft, int i, bool pressed) {
@@ -48,17 +56,27 @@ void SettingsScreen::drawInfo(TFT_eSPI& tft) {
     ui::region(tft, INFO.x, INFO.y, INFO.w, INFO.h, BG, [&](TFT_eSPI& g, int16_t w, int16_t h) {
         g.fillSmoothRoundRect(0, 0, w, h, 10, CARD_EDGE, BG);
         g.fillSmoothRoundRect(1, 1, w - 2, h - 2, 9, theme::CARD, CARD_EDGE);
-        char units[32], mem[24];
-        snprintf(units, sizeof(units), "%s \xC2\xB7 %s", settings::FAHRENHEIT ? "\xC2\xB0" "F" : "\xC2\xB0" "C",
-                 settings::USE_24H ? "24-hour" : "12-hour");
-        snprintf(mem, sizeof(mem), "%lu KB free", static_cast<unsigned long>(ESP.getFreeHeap() / 1024));
-        const char* rows[][2] = {{"Units", units}, {"Firmware", __DATE__}, {"Memory", mem}};
-        for (int i = 0; i < 3; ++i) {
-            const int16_t y = 22 + i * 25;
+
+        char wifi[48], loc[48];
+        switch (net::link()) {
+            case net::Link::Online:
+                snprintf(wifi, sizeof(wifi), "%s \xC2\xB7 %s", net::ssid(), signalWord(net::rssi()));
+                break;
+            case net::Link::Offline: snprintf(wifi, sizeof(wifi), "%s \xC2\xB7 offline", net::ssid()); break;
+            case net::Link::Connecting: snprintf(wifi, sizeof(wifi), "Connecting\xE2\x80\xA6"); break;
+            case net::Link::NotConfigured: snprintf(wifi, sizeof(wifi), "Not set up"); break;
+        }
+        snprintf(loc, sizeof(loc), "%s", net::locationName()[0] ? net::locationName() : "Not set");
+
+        const char* rows[][2] = {{"Location", loc}, {"Wi-Fi", wifi}};
+        for (int i = 0; i < 2; ++i) {
+            const int16_t y = 21 + i * 21;
             ui::setFont(g, Font::Label);
             ui::text(g, rows[i][0], 16, y, L_BASELINE, TEXT_MUTED, theme::CARD);
             ui::setFont(g, Font::Body);
-            ui::text(g, rows[i][1], w - 16, y, R_BASELINE, TEXT, theme::CARD);
+            char buf[48];
+            ui::fitText(g, rows[i][1], w - 16 - 90, buf, sizeof(buf));
+            ui::text(g, buf, w - 16, y, R_BASELINE, TEXT, theme::CARD);
         }
         (void)h;
     });
