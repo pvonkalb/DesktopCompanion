@@ -31,8 +31,9 @@ A Windows companion app (Python) for PC-only features is optional and not starte
 | 1. Display bring-up (landscape diagnostic screen) | **Verified on hardware** 2026-11-07 (single-USB board, `env:cyd`) |
 | 2. Touch input + calibration (NVS-stored, 5-point verified) | **Verified on hardware** 2026-11-07 (5–7 px centre error) |
 | 3a. Screen framework, fonts, Home screen (demo data) | **Verified on hardware** 2026-11-07 |
-| 3b. Calendar screen (week strip + agenda), launcher grid | Next |
-| 4. WiFi setup, NTP time, Open-Meteo weather | Planned |
+| 3b. Calendar (week strip + agenda), Apps launcher, Settings, back navigation | **Verified on hardware** 2026-11-07 |
+| 4. WiFi setup, NTP time, Open-Meteo weather | Next |
+| 5. Countdown timer, focus timer | Planned |
 
 ## Build and flash
 

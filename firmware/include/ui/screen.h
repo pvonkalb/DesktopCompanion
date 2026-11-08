@@ -14,6 +14,7 @@ namespace ui {
 
 enum class ScreenId : uint8_t {
     Home, Weather, Calendar, Launcher, Calibration, TouchTest,
+    Focus, Timer, Music, PcStats, Settings,
     Count
 };
 
@@ -31,6 +32,7 @@ namespace nav {
 void add(ScreenId id, Screen* screen);
 void begin(TFT_eSPI& tft, ScreenId first);
 void go(ScreenId id);                // takes effect at the end of the current loop iteration
+void back();                         // previous screen (Home if there is no history)
 void loop(TFT_eSPI& tft, uint32_t nowMs);
 ScreenId current();
 

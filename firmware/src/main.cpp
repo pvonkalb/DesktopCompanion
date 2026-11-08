@@ -1,13 +1,16 @@
 // Desktop Companion firmware.
-// Current stage: Milestone 3a - screen framework + Home screen (demo data).
+// Current stage: Milestone 3b - calendar, launcher, settings (demo data).
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
 #include "board_cyd.h"
 #include "demo_data.h"
+#include "screens/calendar_screen.h"
 #include "screens/dev_screens.h"
 #include "screens/home_screen.h"
+#include "screens/launcher_screen.h"
 #include "screens/placeholder_screen.h"
+#include "screens/settings_screen.h"
 #include "touch_calibration.h"
 #include "touch_input.h"
 #include "ui/screen.h"
@@ -17,9 +20,14 @@ namespace {
 TFT_eSPI tft;  // pins/driver come from build_flags in platformio.ini
 
 HomeScreen homeScreen;
-PlaceholderScreen weatherScreen("Weather", "Hourly forecast arrives in Milestone 4");
-PlaceholderScreen calendarScreen("Calendar", "Week + day view arrives in Milestone 3b");
-PlaceholderScreen launcherScreen("Apps", "Launcher grid arrives in Milestone 3b");
+CalendarScreen calendarScreen;
+LauncherScreen launcherScreen;
+SettingsScreen settingsScreen;
+PlaceholderScreen weatherScreen("Weather", "Hourly forecast arrives with live weather (Milestone 4)");
+PlaceholderScreen focusScreen("Focus", "Focus timer is on the roadmap");
+PlaceholderScreen timerScreen("Timer", "Countdown timer is on the roadmap");
+PlaceholderScreen musicScreen("Music", "Needs the optional PC companion");
+PlaceholderScreen pcScreen("PC", "Needs the optional PC companion");
 CalibrationScreen calibrationScreen;
 TouchTestScreen touchTestScreen;
 
@@ -50,6 +58,11 @@ void setup() {
     ui::nav::add(ScreenId::Launcher, &launcherScreen);
     ui::nav::add(ScreenId::Calibration, &calibrationScreen);
     ui::nav::add(ScreenId::TouchTest, &touchTestScreen);
+    ui::nav::add(ScreenId::Focus, &focusScreen);
+    ui::nav::add(ScreenId::Timer, &timerScreen);
+    ui::nav::add(ScreenId::Music, &musicScreen);
+    ui::nav::add(ScreenId::PcStats, &pcScreen);
+    ui::nav::add(ScreenId::Settings, &settingsScreen);
 
     Serial.printf("[boot] Desktop Companion  heap=%lu  touch cal: %s%s\n",
                   static_cast<unsigned long>(ESP.getFreeHeap()),

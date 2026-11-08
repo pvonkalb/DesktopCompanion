@@ -14,4 +14,9 @@ void drawWeatherIcon(TFT_eSPI& g, int16_t cx, int16_t cy, int16_t size, uint8_t 
 
 const char* weatherLabel(uint8_t code);   // "Partly cloudy", "Rain", ...
 
+enum class AppIcon : uint8_t { Calendar, Weather, Focus, Timer, Music, Pc, Settings };
+
+// ~32 px launcher glyphs centred on (cx, cy); bg = tile colour underneath.
+void drawAppIcon(TFT_eSPI& g, int16_t cx, int16_t cy, AppIcon icon, uint16_t bg);
+
 }  // namespace ui

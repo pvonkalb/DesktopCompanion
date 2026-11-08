@@ -65,6 +65,45 @@ int dayDiff(time_t from, time_t to) {
     return static_cast<int>(secs >= 0 ? (secs + 43200) / 86400 : (secs - 43200) / 86400);
 }
 
+time_t dayStart(time_t t, int addDays) {
+    struct tm lt;
+    localtime_r(&t, &lt);
+    lt.tm_mday += addDays;
+    lt.tm_hour = lt.tm_min = lt.tm_sec = 0;
+    lt.tm_isdst = -1;   // let mktime work out DST for the target day
+    return mktime(&lt);
+}
+
+time_t weekStart(time_t t) {
+    struct tm lt;
+    localtime_r(&t, &lt);
+    const int first = settings::WEEK_STARTS_MONDAY ? 1 : 0;
+    return dayStart(t, -((lt.tm_wday - first + 7) % 7));
+}
+
+const char* weekdayShort(int wday) {
+    static const char* const SHORT[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+    return SHORT[((wday % 7) + 7) % 7];
+}
+
+void monthYear(time_t t, char* out, size_t len) {
+    static const char* const LONG[] = {"January", "February", "March", "April", "May", "June", "July",
+                                       "August", "September", "October", "November", "December"};
+    struct tm lt;
+    localtime_r(&t, &lt);
+    snprintf(out, len, "%s %d", LONG[lt.tm_mon], lt.tm_year + 1900);
+}
+
+void dayHeading(time_t t, char* out, size_t len) {
+    static const char* const UPPER[] = {"SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
+                                        "THURSDAY", "FRIDAY", "SATURDAY"};
+    static const char* const MON[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+    struct tm lt;
+    localtime_r(&t, &lt);
+    snprintf(out, len, "%s, %s %d", UPPER[lt.tm_wday], MON[lt.tm_mon], lt.tm_mday);
+}
+
 void when(time_t start, time_t end, bool allDay, time_t now, char* out, size_t len) {
     if (start <= now && now < end) {
         if (allDay) { snprintf(out, len, "Today"); return; }

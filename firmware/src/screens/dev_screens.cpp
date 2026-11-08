@@ -18,7 +18,7 @@ void CalibrationScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint
 
 void CalibrationScreen::update(TFT_eSPI& tft, uint32_t nowMs) {
     calibration_screen::update(tft, nowMs);
-    if (calibration_screen::done()) ui::nav::go(ui::ScreenId::Home);
+    if (calibration_screen::done()) ui::nav::back();   // to wherever calibration was opened from
 }
 
 void TouchTestScreen::enter(TFT_eSPI& tft, uint32_t) {
@@ -29,4 +29,5 @@ void TouchTestScreen::enter(TFT_eSPI& tft, uint32_t) {
 void TouchTestScreen::handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t) {
     touch_test::handle(tft, ev);
     if (touch_test::wantsRecalibration()) ui::nav::go(ui::ScreenId::Calibration);
+    else if (touch_test::wantsExit()) ui::nav::back();
 }

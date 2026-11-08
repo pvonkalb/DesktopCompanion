@@ -101,6 +101,75 @@ void drawWeatherIcon(TFT_eSPI& g, int16_t x, int16_t y, int16_t size, uint8_t co
     }
 }
 
+void drawAppIcon(TFT_eSPI& g, int16_t x, int16_t y, AppIcon icon, uint16_t bg) {
+    const float cx = x, cy = y;
+    constexpr uint16_t FG = theme::ACCENT;
+    constexpr uint16_t SOFT = theme::rgb(0xD6DCE4);
+
+    switch (icon) {
+        case AppIcon::Calendar:
+            g.fillSmoothRoundRect(cx - 14, cy - 11, 28, 25, 5, FG, READ_BG);
+            g.fillSmoothRoundRect(cx - 11, cy - 4, 22, 15, 2, bg, READ_BG);
+            for (int r = 0; r < 2; ++r)
+                for (int c = 0; c < 3; ++c)
+                    g.drawSpot(cx - 6 + c * 6, cy + 1 + r * 6, 1.6f, SOFT, READ_BG);
+            g.drawWideLine(cx - 7, cy - 15, cx - 7, cy - 9, 3, SOFT, READ_BG);
+            g.drawWideLine(cx + 7, cy - 15, cx + 7, cy - 9, 3, SOFT, READ_BG);
+            return;
+
+        case AppIcon::Weather:
+            drawWeatherIcon(g, x, y, 34, 2, true, bg);
+            return;
+
+        case AppIcon::Focus:   // timer ring with progress
+            g.drawSmoothArc(x, y, 14, 11, 0, 360, theme::CARD_EDGE, bg, false);
+            g.drawSmoothArc(x, y, 14, 11, 180, 60, FG, bg, true);   // clockwise from 12 o'clock to ~8
+            g.fillSmoothCircle(cx, cy, 3, SOFT, READ_BG);
+            return;
+
+        case AppIcon::Timer:   // hourglass
+            g.fillTriangle(cx - 5, cy - 7, cx + 5, cy - 7, cx, cy - 1, SOFT);         // sand, top
+            g.fillTriangle(cx - 7, cy + 11, cx + 7, cy + 11, cx, cy + 4, SOFT);       // sand, bottom
+            g.drawWideLine(cx, cy - 1, cx, cy + 5, 1.2f, SOFT, READ_BG);              // falling stream
+            g.drawWideLine(cx - 9, cy - 12, cx - 1.5f, cy, 2.5f, FG, READ_BG);        // glass outline
+            g.drawWideLine(cx + 9, cy - 12, cx + 1.5f, cy, 2.5f, FG, READ_BG);
+            g.drawWideLine(cx - 1.5f, cy, cx - 9, cy + 12, 2.5f, FG, READ_BG);
+            g.drawWideLine(cx + 1.5f, cy, cx + 9, cy + 12, 2.5f, FG, READ_BG);
+            g.drawWideLine(cx - 12, cy - 14, cx + 12, cy - 14, 3, FG, READ_BG);       // caps
+            g.drawWideLine(cx - 12, cy + 14, cx + 12, cy + 14, 3, FG, READ_BG);
+            return;
+
+        case AppIcon::Music:   // two beamed notes
+            g.fillSmoothCircle(cx - 8, cy + 9, 4.5f, FG, READ_BG);
+            g.fillSmoothCircle(cx + 7, cy + 6, 4.5f, FG, READ_BG);
+            g.drawWideLine(cx - 4, cy + 9, cx - 4, cy - 10, 2.5f, FG, READ_BG);
+            g.drawWideLine(cx + 11, cy + 6, cx + 11, cy - 13, 2.5f, FG, READ_BG);
+            g.drawWideLine(cx - 4, cy - 10, cx + 11, cy - 13, 4.5f, FG, READ_BG);
+            return;
+
+        case AppIcon::Pc:      // monitor with a small bar chart
+            g.fillSmoothRoundRect(cx - 15, cy - 13, 30, 21, 4, FG, READ_BG);
+            g.fillSmoothRoundRect(cx - 12, cy - 10, 24, 15, 2, bg, READ_BG);
+            g.fillRect(cx - 8, cy - 2, 4, 5, SOFT);
+            g.fillRect(cx - 2, cy - 6, 4, 9, SOFT);
+            g.fillRect(cx + 4, cy - 4, 4, 7, SOFT);
+            g.drawWideLine(cx, cy + 8, cx, cy + 12, 3, FG, READ_BG);
+            g.drawWideLine(cx - 7, cy + 13, cx + 7, cy + 13, 3, FG, READ_BG);
+            return;
+
+        case AppIcon::Settings: {   // gear
+            for (int i = 0; i < 8; ++i) {
+                const float a = i * PI / 4;
+                g.drawWideLine(cx + cosf(a) * 8, cy + sinf(a) * 8, cx + cosf(a) * 14, cy + sinf(a) * 14,
+                               5.5f, FG, READ_BG);
+            }
+            g.fillSmoothCircle(cx, cy, 10.5f, FG, READ_BG);
+            g.fillSmoothCircle(cx, cy, 4.5f, bg, READ_BG);
+            return;
+        }
+    }
+}
+
 const char* weatherLabel(uint8_t code) {
     switch (code) {
         case 0: return "Clear";

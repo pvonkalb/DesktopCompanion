@@ -29,6 +29,7 @@ constexpr Rect BTN_CAL = {static_cast<int16_t>(2 * PAD + (W - 3 * PAD) / 2), H -
                           (W - 3 * PAD) / 2, BTN_H};
 
 bool recalRequested = false;
+bool exitRequested = false;
 const Rect* pressedBtn = nullptr;   // button under the current press
 bool drawing = false;
 int16_t lastX = 0, lastY = 0;
@@ -43,7 +44,7 @@ void drawButton(TFT_eSPI& tft, const Rect& r, const char* label, bool pressed) {
 }
 
 void drawButtons(TFT_eSPI& tft) {
-    drawButton(tft, BTN_CLEAR, "Clear", pressedBtn == &BTN_CLEAR);
+    drawButton(tft, BTN_CLEAR, "Done", pressedBtn == &BTN_CLEAR);
     drawButton(tft, BTN_CAL, "Calibrate", pressedBtn == &BTN_CAL);
 }
 
@@ -72,13 +73,14 @@ void drawAll(TFT_eSPI& tft) {
     tft.drawFastHLine(0, HEADER_H - 1, W, CARD_EDGE);
     clearCanvas(tft);
     drawButtons(tft);
-    drawStatus(tft, "Draw or tap a button");
+    drawStatus(tft, "Draw, hold to clear");
 }
 
 }  // namespace
 
 void begin(TFT_eSPI& tft) {
     recalRequested = false;
+    exitRequested = false;
     pressedBtn = nullptr;
     drawing = false;
     drawAll(tft);
@@ -116,7 +118,7 @@ void handle(TFT_eSPI& tft, const touch_input::Event& ev) {
                 pressedBtn = nullptr;
                 drawButtons(tft);
                 if (btn->contains(ev.x, ev.y)) {   // activate on release inside, like a phone
-                    if (btn == &BTN_CLEAR) { clearCanvas(tft); drawStatus(tft, "Cleared"); }
+                    if (btn == &BTN_CLEAR) exitRequested = true;
                     else recalRequested = true;
                 }
             }
@@ -129,9 +131,11 @@ void handle(TFT_eSPI& tft, const touch_input::Event& ev) {
             break;
 
         case EventType::LongPress:
-            if (!pressedBtn && CANVAS.contains(ev.x, ev.y)) tft.drawCircle(ev.x, ev.y, 14, STATUS_WARN);
-            snprintf(buf, sizeof(buf), "Hold  %d, %d", ev.x, ev.y);
-            drawStatus(tft, buf);
+            if (!pressedBtn && CANVAS.contains(ev.x, ev.y)) {
+                clearCanvas(tft);
+                drawing = false;   // ignore the rest of this stroke
+                drawStatus(tft, "Cleared");
+            }
             break;
     }
 
@@ -140,5 +144,6 @@ void handle(TFT_eSPI& tft, const touch_input::Event& ev) {
 }
 
 bool wantsRecalibration() { return recalRequested; }
+bool wantsExit() { return exitRequested; }
 
 }  // namespace touch_test

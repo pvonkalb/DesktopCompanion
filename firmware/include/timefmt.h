@@ -18,4 +18,10 @@ void timeOfDay(time_t t, char* out, size_t len);                      // "6:30 P
 void when(time_t start, time_t end, bool allDay, time_t now, char* out, size_t len);
 int  dayDiff(time_t from, time_t to);           // calendar-day difference in local time
 
+time_t dayStart(time_t t, int addDays = 0);     // local midnight of t's day (+ addDays), DST-safe
+time_t weekStart(time_t t);                     // local midnight of the first day of t's week
+const char* weekdayShort(int wday);             // "SUN".."SAT"
+void monthYear(time_t t, char* out, size_t len);        // "November 2026"
+void dayHeading(time_t t, char* out, size_t len);       // "FRIDAY, NOV 7"
+
 }  // namespace timefmt

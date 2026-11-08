@@ -33,6 +33,15 @@ void add(model::Calendar& c, const char* title, time_t start, int durationMin, b
     e.calendar = cal;
 }
 
+void sortByStart(model::Calendar& c) {   // insertion sort: tiny n, no allocation
+    for (int i = 1; i < c.count; ++i) {
+        const model::Event e = c.events[i];
+        int j = i - 1;
+        while (j >= 0 && c.events[j].start > e.start) { c.events[j + 1] = c.events[j]; --j; }
+        c.events[j + 1] = e;
+    }
+}
+
 }  // namespace
 
 void setClockFromBuildTime() {
@@ -71,10 +80,20 @@ void load() {
     c.source = model::Source::Demo;
     c.count = 0;
     const time_t now = time(nullptr);
+    // calendar 0 = yours (cyan), calendar 1 = shared from your wife (violet)
+    add(c, "Coffee with Jordan", now - 3 * 3600, 60, false, 0);           // already over today
     add(c, "Dinner with Sam's parents", now + (2 * 60 + 15) * 60, 120, false, 0);
     add(c, "Farmers market", at(1, 9, 0), 120, false, 1);
+    add(c, "Haircut", at(1, 14, 30), 45, false, 1);
     add(c, "Pay rent", at(2, 0, 0), 24 * 60, true, 0);
     add(c, "Yoga", at(3, 18, 0), 60, false, 1);
+    add(c, "Dentist", at(4, 10, 30), 60, false, 0);
+    add(c, "Brunch with Alex", at(6, 11, 0), 90, false, 1);
+    add(c, "Call Mom", at(6, 16, 0), 30, false, 0);
+    add(c, "Meal prep", at(6, 18, 0), 60, false, 1);
+    add(c, "Movie night", at(6, 20, 0), 120, false, 0);
+    add(c, "Weekend trip to the coast", at(9, 0, 0), 3 * 24 * 60, true, 1);   // multi-day
+    sortByStart(c);
     ++c.version;
 }
 
