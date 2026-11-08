@@ -31,7 +31,7 @@ ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
 EXTRAS = "°·•–…"            # degree, middle dot, bullet, en dash, ellipsis
 TEXT = ASCII + EXTRAS
 DIGITS_CLOCK = " 0123456789:-."    # clock, countdown, stopwatch tenths
-DIGITS_TEMP = " 0123456789-°:"     # temperatures, focus ring time
+DIGITS_TEMP = " 0123456789-°:%"    # temperatures, focus ring time, PC load
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,11 @@
 # Windows companion
 
-Sends your Google Calendar to the Desk Companion over USB. Later it will also carry PC
-stats and media controls.
+Feeds the Desk Companion over USB: Google Calendar, now-playing + media/volume control,
+PC load (CPU, GPU, RAM, network), and plays a chime when a device timer finishes.
+
+**Gaming-safe by design:** no kernel drivers, no simulated key presses, no hooks or
+overlays. It uses Windows' media-session API, Core Audio, performance counters and
+NVIDIA's official NVML, and runs at below-normal priority.
 
 ## Install
 

@@ -1,5 +1,5 @@
 // Desktop Companion firmware.
-// Current stage: Milestone 7 - timer, stopwatch and focus.
+// Current stage: Milestone 8 - music controls + PC stats (via the Windows companion).
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
@@ -13,7 +13,10 @@
 #include "screens/home_screen.h"
 #include "screens/timer_screen.h"
 #include "timers.h"
+#include "user_prefs.h"
 #include "screens/launcher_screen.h"
+#include "screens/music_screen.h"
+#include "screens/pc_screen.h"
 #include "screens/placeholder_screen.h"
 #include "screens/settings_screen.h"
 #include "screens/setup_screen.h"
@@ -37,8 +40,8 @@ WeatherScreen weatherScreen;
 SetupScreen setupScreen;
 FocusScreen focusScreen;
 TimerScreen timerScreen;
-PlaceholderScreen musicScreen("Music", "Needs the optional PC companion");
-PlaceholderScreen pcScreen("PC", "Needs the optional PC companion");
+MusicScreen musicScreen;
+PcScreen pcScreen;
 CalibrationScreen calibrationScreen;
 TouchTestScreen touchTestScreen;
 
@@ -64,6 +67,7 @@ void setup() {
 
     // Time + weather come from WiFi; the calendar comes from the Windows companion
     // over USB (last snapshot restored from flash until the PC sends a fresh one).
+    user_prefs::load();
     net::begin();
     pc_link::begin();
 

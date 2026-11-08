@@ -15,4 +15,7 @@ bool everConnected();         // since boot
 // show a notification. Fire-and-forget; ignored if no companion is listening.
 void notify(const char* kind, const char* title, const char* text);
 
+// Ask the PC to do something: playpause | next | prev | vol_up | vol_down | mute.
+void command(const char* action);
+
 }  // namespace pc_link

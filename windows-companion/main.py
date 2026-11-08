@@ -26,6 +26,7 @@ APP_VERSION = "0.1.0"
 PING_EVERY_S = 5
 ACK_TIMEOUT_S = 3
 RECONNECT_EVERY_S = 3
+STATS_EVERY_S = 2
 DEFAULT_CONFIG = {"port": "auto", "calendars": [], "days": 14, "sync_minutes": 5}
 
 log = logging.getLogger("companion")
@@ -133,6 +134,11 @@ class Companion:
         self.status = Status()
         self.alert_sound = bool(config.get("alert_sound", True))
         self.on_alert = None   # set by the tray: (title, text) -> show a Windows notification
+        from media import MediaController
+        from pc_stats import StatsCollector
+        self._stats = StatsCollector()
+        self._next_stats = 0.0
+        self._media = MediaController(self._send_media)
 
     # ---- control (any thread)
     def sync_now(self) -> None:
@@ -159,15 +165,26 @@ class Companion:
             self._source.reset_auth()
         self._next_sync = 0
 
+    def _send_media(self, state: dict) -> None:
+        """Called by the media thread when now-playing / volume changes."""
+        if self._link.is_open and self._device_hello.is_set():
+            self._link.send({"t": "media", **state})
+
     # ---- incoming (reader thread)
     def _on_message(self, msg: dict) -> None:
         kind = msg.get("t")
+        if kind == "cmd":   # button pressed on the device
+            ok = self._media.command(str(msg.get("a", "")))
+            if "s" in msg:
+                self._link.send({"t": "ack" if ok else "nak", "s": msg["s"], **({} if ok else {"err": "unknown"})})
+            return
         if kind == "hello":
             log.info("device: %s firmware %s (protocol v%s)", msg.get("dev"), msg.get("fw"), msg.get("v"))
             self._device_hello.set()
             self.status.device_connected = True
             self.status.device_fw = str(msg.get("fw", ""))
             self._next_sync = 0   # (re)booted device: send the calendar straight away
+            self._media.resend()
         elif kind == "alert":
             title, text = str(msg.get("ti", "Desk Companion")), str(msg.get("tx", ""))
             log.info("device alert (%s): %s - %s", msg.get("k"), title, text)
@@ -256,6 +273,9 @@ class Companion:
                 last_ping = now
                 if not self._request({"t": "ping"}) and not self._link.is_open:
                     continue
+            if now >= self._next_stats and self._device_hello.is_set():
+                self._next_stats = now + STATS_EVERY_S
+                self._link.send({"t": "stats", **self._stats.sample()})
             if now >= self._next_sync:
                 self._sync_calendar()
             self.status.device_connected = (self._link.is_open and self._device_hello.is_set()

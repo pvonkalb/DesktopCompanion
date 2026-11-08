@@ -2,6 +2,7 @@
 
 #include "settings.h"
 #include "ui/screen.h"
+#include "user_prefs.h"
 
 namespace ui {
 namespace nav {
@@ -88,8 +89,9 @@ void loop(TFT_eSPI& tft, uint32_t now) {
     }
     if (!hasPending) s->update(tft, now);
 
-    if (!hasPending && active != ScreenId::Home && s->idleReturnsHome() &&
-        now - lastTouchMs >= settings::IDLE_RETURN_MS && !touch_input::isDown()) {
+    const uint32_t idleMs = user_prefs::idleReturnMs();   // 0 = never (Settings > Return to Home)
+    if (!hasPending && idleMs && active != ScreenId::Home && s->idleReturnsHome() &&
+        now - lastTouchMs >= idleMs && !touch_input::isDown()) {
         go(ScreenId::Home);
     }
     if (hasPending) {

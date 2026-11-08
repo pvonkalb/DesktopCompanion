@@ -39,7 +39,8 @@ Protocol: docs/protocol.md.
 | 5. Google Calendar via the Windows companion (USB protocol v1) | **Verified on hardware** 2026-11-07 |
 | 6. Companion tray app: background, starts with Windows, below-normal priority | **Verified** 2026-11-07 |
 | 7. Timer + stopwatch, focus (pomodoro); alerts on screen, RGB LED and PC chime | **Verified on hardware** 2026-11-07 |
-| 8. Music controls + PC stats (companion) | Next |
+| 8. Music controls + PC stats (anti-cheat safe), Return-to-Home setting | **Verified on hardware** 2026-11-07 |
+| 9. Polish + portfolio write-up | Next |
 
 ## Build and flash
 

@@ -11,7 +11,7 @@ public:
     void handle(TFT_eSPI& tft, const touch_input::Event& ev, uint32_t nowMs) override;
 
 private:
-    static constexpr int ACTIONS = 3;
+    static constexpr int ACTIONS = 4;
     void drawAction(TFT_eSPI& tft, int index, bool pressed);
     void drawInfo(TFT_eSPI& tft);
 

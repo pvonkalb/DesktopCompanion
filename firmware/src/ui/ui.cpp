@@ -61,6 +61,38 @@ void fitText(TFT_eSPI& g, const char* text, int16_t maxWidth, char* out, size_t 
     out[0] = '\0';
 }
 
+int wrap2(TFT_eSPI& g, const char* text, int16_t maxWidth, char* line1, char* line2, size_t lineLen) {
+    line1[0] = line2[0] = '\0';
+    if (!text[0]) return 0;
+    if (g.textWidth(text) <= maxWidth) {
+        fitText(g, text, maxWidth, line1, lineLen);
+        return 1;
+    }
+    // Longest prefix ending at a space that fits on line 1.
+    char buf[96];
+    strncpy(buf, text, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+    size_t breakAt = 0;
+    for (size_t i = 1; buf[i]; ++i) {
+        if (buf[i] != ' ') continue;
+        buf[i] = '\0';
+        const bool fits = g.textWidth(buf) <= maxWidth;
+        buf[i] = ' ';
+        if (!fits) break;
+        breakAt = i;
+    }
+    if (breakAt == 0) {   // one long word: just shorten it
+        fitText(g, text, maxWidth, line1, lineLen);
+        return 1;
+    }
+    buf[breakAt] = '\0';
+    fitText(g, buf, maxWidth, line1, lineLen);
+    const char* rest = text + breakAt + 1;
+    while (*rest == ' ') ++rest;
+    fitText(g, rest, maxWidth, line2, lineLen);
+    return line2[0] ? 2 : 1;
+}
+
 void text(TFT_eSPI& g, const char* s, int16_t x, int16_t y, uint8_t datum, uint16_t fg, uint16_t bg) {
     g.setTextDatum(datum);
     g.setTextColor(fg, bg);

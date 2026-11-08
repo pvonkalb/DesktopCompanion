@@ -152,6 +152,34 @@ bool applyCalendar(JsonObjectConst msg) {
     return true;
 }
 
+void applyMedia(JsonObjectConst m) {
+    model::Media& d = model::state().media;
+    copyUtf8(d.app, sizeof(d.app), m["app"] | "");
+    copyUtf8(d.title, sizeof(d.title), m["ti"] | "");
+    copyUtf8(d.artist, sizeof(d.artist), m["ar"] | "");
+    d.state = m["st"] | 0;
+    d.volume = static_cast<int8_t>(constrain(m["vol"] | -1, -1, 100));
+    d.muted = (m["mu"] | 0) == 1;
+    d.valid = true;
+    ++d.version;
+}
+
+void applyStats(JsonObjectConst m) {
+    model::PcStats& d = model::state().pc;
+    d.cpu = static_cast<int8_t>(constrain(m["cpu"] | -1, -1, 100));
+    d.ram = static_cast<int8_t>(constrain(m["ram"] | -1, -1, 100));
+    d.gpu = static_cast<int8_t>(constrain(m["gpu"] | -1, -1, 100));
+    d.gpuTemp = static_cast<int8_t>(constrain(m["gt"] | -1, -1, 127));
+    d.ramUsedGb = m["ru"] | 0.0f;
+    d.ramTotalGb = m["rt"] | 0;
+    d.downBps = m["dn"] | 0UL;
+    d.upBps = m["up"] | 0UL;
+    d.valid = true;
+    ++d.version;
+}
+
+uint32_t commandSeq = 0;
+
 void handleLine() {
     if (lineLen < 7 || line[0] != '@') return;   // log line or noise
     char* bar = strrchr(line, '|');
@@ -184,6 +212,13 @@ void handleLine() {
         // heartbeat: the ack below is the reply
     } else if (strcmp(t, "cal") == 0) {
         ok = applyCalendar(doc.as<JsonObjectConst>());
+    } else if (strcmp(t, "media") == 0) {
+        applyMedia(doc.as<JsonObjectConst>());
+    } else if (strcmp(t, "stats") == 0) {
+        applyStats(doc.as<JsonObjectConst>());
+    } else if (strcmp(t, "ack") == 0 || strcmp(t, "nak") == 0) {
+        if (strcmp(t, "nak") == 0) Serial.printf("[pc] command %ld rejected: %s\n", s, doc["err"] | "?");
+        return;   // replies to our commands: never answer an answer
     } else {
         if (s >= 0) sendNak(s, "unknown type");
         return;
@@ -218,6 +253,14 @@ void loop(uint32_t) {
             overflow = true;   // discard the rest of this line
         }
     }
+}
+
+void command(const char* action) {
+    JsonDocument d;
+    d["t"] = "cmd";
+    d["s"] = static_cast<long>(++commandSeq);
+    d["a"] = action;
+    send(d);
 }
 
 void notify(const char* kind, const char* title, const char* text) {

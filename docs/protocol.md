@@ -72,7 +72,31 @@ A complete replacement of the device's calendar (not a delta).
 Window: today 00:00 local → +14 days, recurring events already expanded, sorted by
 start. At most 24 events (the device keeps the first 24).
 
+### `media` (now playing + volume)
+```json
+{"t":"media","app":"Spotify","ti":"Song title","ar":"Artist","st":1,"vol":38,"mu":0}
+```
+Sent when anything changes (polled every 1 s) and re-sent every 15 s. `st`: 0 = no
+session, 1 = playing, 2 = paused. `vol` = master volume 0-100 (-1 unknown), `mu` = muted.
+Source: Windows' media-session API and Core Audio, with no simulated key presses.
+
+### `stats` (PC load)
+```json
+{"t":"stats","cpu":21,"ram":49,"ru":30.3,"rt":62,"dn":813,"up":13695,"gpu":32,"gt":44}
+```
+Every 2 s. Percentages 0-100; `ru`/`rt` = RAM used/total GB; `dn`/`up` = network
+bytes/s; `gpu` = GPU load %, `gt` = GPU °C (`-1` = unavailable, e.g. no NVIDIA GPU).
+Source: Windows performance APIs (psutil) and NVIDIA NVML. No kernel drivers.
+
 ## Device → PC
+
+### `cmd` (button pressed on the device)
+```json
+{"t":"cmd","s":5,"a":"playpause"}
+```
+`a` = `playpause` | `next` | `prev` | `vol_up` | `vol_down` | `mute`. The PC replies
+`ack`/`nak` with the same `s`, then pushes a fresh `media` message. The device treats
+incoming `ack`/`nak` as replies and never answers them.
 
 ### `hello`
 ```json

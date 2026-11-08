@@ -4,3 +4,12 @@ google-auth-oauthlib>=1.2,<2
 google-auth-httplib2>=0.2,<1
 pystray==0.19.5
 Pillow>=11,<13
+# music: Windows media session API + Core Audio (no simulated keys, anti-cheat safe)
+winrt-runtime==4.1.0
+winrt-Windows.Media.Control==4!10.0.28000.2957
+winrt-Windows.Foundation==4!10.0.28000.2957
+pycaw==20260927
+comtypes==1.4.17
+# PC stats: Windows performance APIs + NVIDIA NVML (no kernel drivers)
+psutil==7.2.2
+nvidia-ml-py==13.615.71

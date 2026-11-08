@@ -45,6 +45,9 @@ void region(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, uint16_t 
 // Copies text into out, shortened with "…" so it fits maxWidth in the current font.
 void fitText(TFT_eSPI& g, const char* text, int16_t maxWidth, char* out, size_t outLen);
 
+// Word-wraps into at most two lines (second line shortened with "…"). Returns line count.
+int wrap2(TFT_eSPI& g, const char* text, int16_t maxWidth, char* line1, char* line2, size_t lineLen);
+
 // Draw with an explicit datum and colours in one call (font must already be set).
 void text(TFT_eSPI& g, const char* s, int16_t x, int16_t y, uint8_t datum, uint16_t fg, uint16_t bg);
 
